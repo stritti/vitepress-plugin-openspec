@@ -1,0 +1,33 @@
+info:
+  title: Sample OpenSpec API
+  version: 1.0.0
+  description: A sample OpenSpec for the vitepress-plugin-openspec tests.
+openapi: "3.0.0"
+paths:
+  /specs:
+    get:
+      operationId: listSpecs
+      summary: List all specs
+      tags:
+        - specs
+    post:
+      operationId: createSpec
+      summary: Create a spec
+      tags:
+        - specs
+  /specs/{specId}:
+    get:
+      operationId: showSpecById
+      summary: Info for a specific spec
+      tags:
+        - specs
+  /plugins:
+    get:
+      operationId: listPlugins
+      summary: List all plugins
+      tags:
+        - plugins
+  /untagged:
+    get:
+      operationId: untaggedEndpoint
+      summary: An endpoint with no tags

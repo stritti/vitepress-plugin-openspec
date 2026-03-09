@@ -11,7 +11,7 @@ import {
 } from '../utils.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PETSTORE_YAML = path.join(__dirname, 'petstore.yaml')
+const SAMPLE_YAML = path.join(__dirname, 'sample.yaml')
 
 describe('slugify', () => {
   it('uses operationId when provided', () => {
@@ -33,9 +33,9 @@ describe('slugify', () => {
 
 describe('loadSpecFile', () => {
   it('parses a YAML file', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     expect(spec).toHaveProperty('openapi')
-    expect((spec.info as Record<string, unknown>).title).toBe('Pet Store API')
+    expect((spec.info as Record<string, unknown>).title).toBe('Sample OpenSpec API')
   })
 
   it('throws for non-existent files', () => {
@@ -54,19 +54,19 @@ describe('loadSpecFile', () => {
 
 describe('extractEndpoints', () => {
   it('extracts all endpoints from a spec', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const endpoints = extractEndpoints(spec)
     expect(endpoints.length).toBe(5)
   })
 
   it('captures method, path and tags', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const endpoints = extractEndpoints(spec)
-    const listPets = endpoints.find((e) => e.operationId === 'listPets')
-    expect(listPets).toBeDefined()
-    expect(listPets!.method).toBe('GET')
-    expect(listPets!.path).toBe('/pets')
-    expect(listPets!.tags).toContain('pets')
+    const listSpecs = endpoints.find((e) => e.operationId === 'listSpecs')
+    expect(listSpecs).toBeDefined()
+    expect(listSpecs!.method).toBe('GET')
+    expect(listSpecs!.path).toBe('/specs')
+    expect(listSpecs!.tags).toContain('specs')
   })
 
   it('returns empty array when paths is missing', () => {
@@ -76,20 +76,20 @@ describe('extractEndpoints', () => {
 
 describe('parseSpec', () => {
   it('returns correct title, version and description', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const parsed = parseSpec(spec)
-    expect(parsed.title).toBe('Pet Store API')
+    expect(parsed.title).toBe('Sample OpenSpec API')
     expect(parsed.version).toBe('1.0.0')
     expect(parsed.description).toBe(
-      'A sample OpenAPI 3 spec for the vitepress-plugin-openspec tests.',
+      'A sample OpenSpec for the vitepress-plugin-openspec tests.',
     )
   })
 
   it('collects unique tags', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const parsed = parseSpec(spec)
-    expect(parsed.tags).toContain('pets')
-    expect(parsed.tags).toContain('owners')
+    expect(parsed.tags).toContain('specs')
+    expect(parsed.tags).toContain('plugins')
     expect(new Set(parsed.tags).size).toBe(parsed.tags.length)
   })
 
@@ -103,22 +103,22 @@ describe('parseSpec', () => {
 
 describe('generateEndpointMarkdown', () => {
   it('contains the HTTP method and path in the heading', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const endpoints = extractEndpoints(spec)
     const md = generateEndpointMarkdown(endpoints[0]!, true)
     expect(md).toContain(`# ${endpoints[0]!.method} ${endpoints[0]!.path}`)
   })
 
   it('includes summary when present', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const endpoints = extractEndpoints(spec)
-    const listPets = endpoints.find((e) => e.operationId === 'listPets')!
-    const md = generateEndpointMarkdown(listPets, true)
-    expect(md).toContain('List all pets')
+    const listSpecs = endpoints.find((e) => e.operationId === 'listSpecs')!
+    const md = generateEndpointMarkdown(listSpecs, true)
+    expect(md).toContain('List all specs')
   })
 
   it('omits schema comment when includeSchemas is false', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const endpoints = extractEndpoints(spec)
     const md = generateEndpointMarkdown(endpoints[0]!, false)
     expect(md).not.toContain('Schema details')
@@ -127,14 +127,14 @@ describe('generateEndpointMarkdown', () => {
 
 describe('generateIndexMarkdown', () => {
   it('contains the spec title', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const parsed = parseSpec(spec)
     const md = generateIndexMarkdown(parsed, 'api')
-    expect(md).toContain('# Pet Store API')
+    expect(md).toContain('# Sample OpenSpec API')
   })
 
   it('lists all endpoints in a table', () => {
-    const spec = loadSpecFile(PETSTORE_YAML)
+    const spec = loadSpecFile(SAMPLE_YAML)
     const parsed = parseSpec(spec)
     const md = generateIndexMarkdown(parsed, 'api')
     for (const endpoint of parsed.endpoints) {
@@ -147,17 +147,17 @@ import { generateSidebarFromSpec } from '../plugin.js'
 
 describe('generateSidebarFromSpec', () => {
   it('returns sidebar items for a valid spec', () => {
-    const sidebar = generateSidebarFromSpec(PETSTORE_YAML, { outDir: 'api' })
+    const sidebar = generateSidebarFromSpec(SAMPLE_YAML, { outDir: 'api' })
     expect(sidebar.length).toBeGreaterThan(0)
-    expect(sidebar[0]!.text).toBe('Pet Store API')
+    expect(sidebar[0]!.text).toBe('Sample OpenSpec API')
   })
 
   it('groups by tags when groupByTags is true', () => {
-    const sidebar = generateSidebarFromSpec(PETSTORE_YAML, { outDir: 'api', groupByTags: true })
+    const sidebar = generateSidebarFromSpec(SAMPLE_YAML, { outDir: 'api', groupByTags: true })
     const items = sidebar[0]!.items!
     const tagNames = items.map((i) => i.text)
-    expect(tagNames).toContain('pets')
-    expect(tagNames).toContain('owners')
+    expect(tagNames).toContain('specs')
+    expect(tagNames).toContain('plugins')
   })
 
   it('returns an empty array for a missing file without throwing', () => {
