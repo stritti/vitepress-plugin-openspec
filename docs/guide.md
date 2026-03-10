@@ -2,22 +2,18 @@
 
 ## Installation
 
-The package is published to [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec).
-
-First, add an `.npmrc` file to your project root so that `@stritti`-scoped packages are resolved from GitHub Packages:
-
-```
-@stritti:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
-```
-
-Replace `YOUR_GITHUB_TOKEN` with a [personal access token](https://github.com/settings/tokens) that has the `read:packages` scope.
-
-Then install the plugin:
+Install the plugin from npm:
 
 ```bash
 bun add @stritti/vitepress-plugin-openspec
 # or: npm install @stritti/vitepress-plugin-openspec
+```
+
+The package is also available from [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec). To install from there, add an `.npmrc` in your project root:
+
+```
+@stritti:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
 ---
@@ -108,6 +104,51 @@ The plugin writes generated Markdown files to `docs/<outDir>/` at build time. Ad
 ```
 docs/openspec/
 ```
+
+---
+
+## How It Works
+
+The plugin reads your `openspec/` source folder and generates ready-to-serve Markdown pages under `docs/<outDir>/`:
+
+```
+openspec/                     ← your source (committed)
+├── specs/
+│   └── my-feature/
+│       └── spec.md
+└── changes/
+    ├── add-auth/
+    │   ├── .openspec.yaml
+    │   ├── proposal.md
+    │   └── tasks.md
+    └── archive/
+        └── 2024-01-15-old-change/
+
+docs/openspec/                ← generated (add to .gitignore)
+├── index.md                  ← overview page
+├── specs/
+│   ├── index.md              ← specifications index
+│   └── my-feature/
+│       └── index.md          ← mirrors spec.md with VitePress frontmatter
+└── changes/
+    ├── index.md              ← changes index
+    ├── add-auth/
+    │   ├── index.md          ← change overview from .openspec.yaml
+    │   ├── proposal.md
+    │   └── tasks.md
+    └── archive/
+        └── 2024-01-15-old-change/
+            └── index.md
+```
+
+### Two-phase generation
+
+VitePress scans `srcDir` for `.md` files **before** any Vite plugin hooks run. This means a standard Vite plugin that generates files in `configResolved` would be too late — pages wouldn't be in the routing table on first build or in CI.
+
+The plugin solves this with two complementary mechanisms:
+
+1. **`generateOpenSpecPages()`** — called synchronously at the top of `config.ts`, before `defineConfig()`. This ensures all pages exist when VitePress scans for routes.
+2. **`openspec()` Vite plugin** — calls `generateOpenSpecPages()` again on every config reload during `vitepress dev`, keeping pages in sync with your source files.
 
 ---
 

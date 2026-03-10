@@ -6,14 +6,12 @@ A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSp
 
 ## Installation
 
-The package is published to [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec).
-
 ```bash
 bun add @stritti/vitepress-plugin-openspec
 # or: npm install @stritti/vitepress-plugin-openspec
 ```
 
-For GitHub Packages you need an `.npmrc` in your project (or `~/.npmrc`) with a [personal access token](https://github.com/settings/tokens) that has `read:packages` scope:
+The package is also available from [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec). To install from there, add an `.npmrc` in your project root with a [personal access token](https://github.com/settings/tokens) that has `read:packages` scope:
 
 ```
 @stritti:registry=https://npm.pkg.github.com
@@ -118,6 +116,15 @@ Add the generated output folder to `.gitignore`:
 ```
 docs/openspec/
 ```
+
+---
+
+## How It Works
+
+VitePress scans `srcDir` for `.md` files **before** any Vite plugin hooks run. The plugin solves this with two complementary mechanisms:
+
+1. **`generateOpenSpecPages()`** — called synchronously at the top of `config.ts`, before `defineConfig()`. Ensures all pages exist when VitePress scans for routes (critical for first builds and CI).
+2. **`openspec()` Vite plugin** — calls `generateOpenSpecPages()` again on every config reload during `vitepress dev`, keeping pages in sync with your source files.
 
 ---
 
