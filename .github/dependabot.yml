@@ -5,11 +5,15 @@
 
 version: 2
 updates:
-  - package-ecosystem: "bun" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "bun" # See documentation for possible values
-    directory: "/docs" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
       interval: "weekly"
