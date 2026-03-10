@@ -104,6 +104,9 @@ dist
 # vitepress cache directory
 **/.vitepress/cache
 
+# vitepress-plugin-openspec generated output (built at runtime, not committed)
+docs/openspec/
+
 # Docusaurus cache and generated files
 .docusaurus
 
