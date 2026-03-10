@@ -2,59 +2,29 @@ import fs from 'node:fs'
 import path from 'node:path'
 import pc from 'picocolors'
 import type { Plugin } from 'vite'
-import type { OpenSpecPluginOptions, ParsedSpec, SidebarItem } from './types.js'
+import type { Change, OpenSpecPluginOptions } from './types.js'
 import {
-  generateEndpointMarkdown,
-  generateIndexMarkdown,
-  groupEndpointsByTag,
-  loadSpecFile,
-  parseSpec,
+  generateChangeIndexPage,
+  generateChangesIndexPage,
+  generateSpecPage,
+  generateSpecsIndexPage,
+  readOpenSpecFolder,
 } from './utils.js'
 
 const PLUGIN_NAME = 'vitepress-plugin-openspec'
 
-/**
- * Builds the sidebar configuration for the generated API pages.
- */
-function buildSidebar(
-  parsed: ParsedSpec,
-  outDir: string,
-  groupByTags: boolean,
-): SidebarItem[] {
-  if (groupByTags) {
-    return groupEndpointsByTag(parsed.endpoints, outDir)
-  }
+function writeFile(filePath: string, content: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, content, 'utf-8')
+}
 
-  return parsed.endpoints.map((e) => ({
-    text: `${e.method} ${e.path}`,
-    link: `/${outDir}/${e.slug}`,
-  }))
+function copyFile(src: string, dest: string): void {
+  fs.mkdirSync(path.dirname(dest), { recursive: true })
+  fs.copyFileSync(src, dest)
 }
 
 /**
- * Writes all generated Markdown files to the output directory.
- */
-function writeGeneratedFiles(
-  parsed: ParsedSpec,
-  absoluteOutDir: string,
-  relativeOutDir: string,
-  options: Required<OpenSpecPluginOptions>,
-): void {
-  fs.mkdirSync(absoluteOutDir, { recursive: true })
-
-  // Write the index page
-  const indexContent = generateIndexMarkdown(parsed, relativeOutDir)
-  fs.writeFileSync(path.join(absoluteOutDir, 'index.md'), indexContent, 'utf-8')
-
-  // Write one page per endpoint
-  for (const endpoint of parsed.endpoints) {
-    const content = generateEndpointMarkdown(endpoint, options.includeSchemas)
-    fs.writeFileSync(path.join(absoluteOutDir, `${endpoint.slug}.md`), content, 'utf-8')
-  }
-}
-
-/**
- * VitePress plugin that reads one or more OpenAPI spec files and generates
+ * VitePress plugin that reads an openspec/ directory and generates structured
  * Markdown documentation pages inside the VitePress source directory.
  *
  * @example
@@ -66,133 +36,103 @@ function writeGeneratedFiles(
  * export default defineConfig({
  *   vite: {
  *     plugins: [
- *       openspec({ spec: './openapi.yaml' }),
+ *       openspec({ specDir: './openspec', outDir: 'project-docs' }),
  *     ],
  *   },
  * })
  * ```
  */
-export function openspec(userOptions: OpenSpecPluginOptions): Plugin {
-  const options: Required<OpenSpecPluginOptions> = {
-    outDir: 'api',
-    title: '',
-    groupByTags: true,
-    includeSchemas: true,
-    generateSidebar: true,
-    ...userOptions,
-  }
-
-  const specFiles = Array.isArray(options.spec) ? options.spec : [options.spec]
-
-  // Collected sidebar items across all specs (populated during configResolved)
-  let generatedSidebar: SidebarItem[] = []
+export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
+  const specDir = userOptions.specDir ?? './openspec'
+  const outDir = userOptions.outDir ?? 'openspec'
 
   return {
     name: PLUGIN_NAME,
     enforce: 'pre',
 
-    /**
-     * After the Vite config is resolved we know the VitePress `srcDir`.
-     * We parse the spec(s) and write the Markdown files here so that
-     * VitePress picks them up during its own build/dev pipeline.
-     */
     configResolved(resolvedConfig) {
-      // VitePress sets config.vitepress on the resolved Vite config
       const vpConfig = (resolvedConfig as unknown as { vitepress?: { srcDir?: string } }).vitepress
       const srcDir = vpConfig?.srcDir ?? resolvedConfig.root ?? process.cwd()
+      const absoluteOutDir = path.resolve(srcDir, outDir)
 
-      const absoluteOutDir = path.resolve(srcDir, options.outDir)
+      try {
+        const folder = readOpenSpecFolder(specDir)
 
-      generatedSidebar = []
-
-      for (const specFile of specFiles) {
-        try {
-          const raw = loadSpecFile(specFile)
-          const parsed = parseSpec(raw)
-
-          // Allow the user-supplied title to override the spec title
-          if (options.title) {
-            parsed.title = options.title
-          }
-
-          writeGeneratedFiles(parsed, absoluteOutDir, options.outDir, options)
-
-          if (options.generateSidebar) {
-            const sidebar = buildSidebar(parsed, options.outDir, options.groupByTags)
-            generatedSidebar.push({
-              text: parsed.title,
-              collapsed: false,
-              items: sidebar,
-            })
-          }
-
-          console.log(
-            `${pc.bold(pc.cyan(`[${PLUGIN_NAME}]`))} Generated ${pc.green(String(parsed.endpoints.length))} endpoint page(s) from ${pc.cyan(specFile)} → ${pc.cyan(absoluteOutDir)}`,
-          )
-        } catch (err) {
-          console.error(
-            `${pc.bold(pc.red(`[${PLUGIN_NAME}]`))} Failed to process spec file "${specFile}": ${String(err)}`,
-          )
+        // --- Spec pages ---
+        for (const spec of folder.specs) {
+          const dest = path.join(absoluteOutDir, 'specs', spec.name, 'index.md')
+          writeFile(dest, generateSpecPage(spec))
         }
+        writeFile(
+          path.join(absoluteOutDir, 'specs', 'index.md'),
+          generateSpecsIndexPage(folder.specs, outDir),
+        )
+
+        // --- Active change pages ---
+        for (const change of folder.changes) {
+          writeChangePage(change, absoluteOutDir, outDir, false)
+        }
+
+        // --- Archived change pages ---
+        for (const change of folder.archivedChanges) {
+          writeChangePage(change, absoluteOutDir, outDir, true)
+        }
+
+        // --- Changes index ---
+        writeFile(
+          path.join(absoluteOutDir, 'changes', 'index.md'),
+          generateChangesIndexPage(folder, outDir),
+        )
+
+        // --- Root index ---
+        const rootIndex = [
+          '# Project Documentation',
+          '',
+          'This section is generated from the project\'s [OpenSpec](https://openspec.dev/) folder.',
+          'OpenSpec is a lightweight, file-based workflow for spec-driven development —',
+          'it structures your project\'s capability specifications and change proposals as plain Markdown files.',
+          '',
+          `- [Specifications](/${outDir}/specs/) — canonical capability specs`,
+          `- [Changes](/${outDir}/changes/) — active and archived change proposals`,
+          '',
+        ].join('\n')
+        writeFile(path.join(absoluteOutDir, 'index.md'), rootIndex)
+
+        console.log(
+          `${pc.bold(pc.cyan(`[${PLUGIN_NAME}]`))} Generated docs from ${pc.cyan(specDir)}: ` +
+            `${pc.green(String(folder.specs.length))} spec(s), ` +
+            `${pc.green(String(folder.changes.length))} change(s), ` +
+            `${pc.green(String(folder.archivedChanges.length))} archived`,
+        )
+      } catch (err) {
+        console.error(
+          `${pc.bold(pc.red(`[${PLUGIN_NAME}]`))} Failed to process openspec directory "${specDir}": ${String(err)}`,
+        )
       }
     },
   }
 }
 
-/**
- * Synchronously parses one or more OpenAPI spec files and returns a sidebar
- * configuration that can be used directly in your VitePress config.
- *
- * Because the VitePress config object is evaluated **before** any Vite plugin
- * hooks run, the sidebar must be computed eagerly. This helper reads the spec
- * file(s) at config-evaluation time and returns the sidebar items so they can
- * be placed in `themeConfig.sidebar`.
- *
- * @example
- * ```typescript
- * import { defineConfig } from 'vitepress'
- * import openspec, { generateSidebarFromSpec } from 'vitepress-plugin-openspec'
- *
- * export default defineConfig({
- *   vite: {
- *     plugins: [openspec({ spec: './openapi.yaml' })],
- *   },
- *   themeConfig: {
- *     sidebar: {
- *       '/api/': generateSidebarFromSpec('./openapi.yaml', { outDir: 'api' }),
- *     },
- *   },
- * })
- * ```
- */
-export function generateSidebarFromSpec(
-  spec: string | string[],
-  options: Pick<OpenSpecPluginOptions, 'outDir' | 'groupByTags' | 'title'> = {},
-): SidebarItem[] {
-  const outDir = options.outDir ?? 'api'
-  const groupByTags = options.groupByTags ?? true
-  const specFiles = Array.isArray(spec) ? spec : [spec]
-  const sidebar: SidebarItem[] = []
+function writeChangePage(
+  change: Change,
+  absoluteOutDir: string,
+  outDir: string,
+  isArchived: boolean,
+): void {
+  const subPath = isArchived
+    ? path.join('changes', 'archive', `${change.archivedDate}-${change.name}`)
+    : path.join('changes', change.name)
+  const changeOutDir = path.join(absoluteOutDir, subPath)
 
-  for (const specFile of specFiles) {
-    try {
-      const raw = loadSpecFile(specFile)
-      const parsed = parseSpec(raw)
-      if (options.title) parsed.title = options.title
+  // Write index page
+  writeFile(path.join(changeOutDir, 'index.md'), generateChangeIndexPage(change, outDir))
 
-      sidebar.push({
-        text: parsed.title,
-        collapsed: false,
-        items: buildSidebar(parsed, outDir, groupByTags),
-      })
-    } catch (err) {
-      console.error(
-        `${pc.bold(pc.red(`[${PLUGIN_NAME}]`))} generateSidebarFromSpec: failed to process "${specFile}": ${String(err)}`,
-      )
-    }
+  // Copy artifact files
+  for (const artifact of change.artifacts) {
+    const srcFile = path.join(change.dir, `${artifact}.md`)
+    const destFile = path.join(changeOutDir, `${artifact}.md`)
+    copyFile(srcFile, destFile)
   }
-
-  return sidebar
 }
 
 export default openspec

@@ -2,251 +2,197 @@ import { describe, it, expect } from 'vitest'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  loadSpecFile,
-  parseSpec,
-  slugify,
-  extractEndpoints,
-  generateEndpointMarkdown,
-  generateIndexMarkdown,
-  groupEndpointsByTag,
+  readOpenSpecFolder,
+  generateSpecPage,
+  generateSpecsIndexPage,
+  generateChangeIndexPage,
+  generateChangesIndexPage,
+  generateOpenSpecSidebar,
   openspecNav,
 } from '../utils.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const SAMPLE_YAML = path.join(__dirname, 'sample.yaml')
+const FIXTURE = path.join(__dirname, 'fixture/openspec')
 
-describe('slugify', () => {
-  it('uses operationId when provided', () => {
-    expect(slugify('GET', '/users/{id}', 'getUserById')).toBe('getuserbyid')
+describe('readOpenSpecFolder', () => {
+  it('reads specs from openspec/specs/', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    expect(folder.specs).toHaveLength(2)
+    const names = folder.specs.map((s) => s.name)
+    expect(names).toContain('auth-flow')
+    expect(names).toContain('data-export')
   })
 
-  it('falls back to method + path when no operationId', () => {
-    expect(slugify('GET', '/users/{id}')).toBe('get-users-id')
+  it('reads content of each spec', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const auth = folder.specs.find((s) => s.name === 'auth-flow')!
+    expect(auth.content).toContain('User can log in')
   })
 
-  it('handles paths with multiple segments', () => {
-    expect(slugify('POST', '/api/v1/items')).toBe('post-api-v1-items')
+  it('reads active changes from openspec/changes/', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    expect(folder.changes).toHaveLength(2)
+    const names = folder.changes.map((c) => c.name)
+    expect(names).toContain('add-login')
+    expect(names).toContain('fix-bug')
   })
 
-  it('lowercases method in slug', () => {
-    expect(slugify('DELETE', '/users')).toBe('delete-users')
-  })
-})
-
-describe('loadSpecFile', () => {
-  it('parses a YAML file', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    expect(spec).toHaveProperty('openapi')
-    expect((spec.info as Record<string, unknown>).title).toBe('Sample OpenSpec API')
+  it('reads change artifacts correctly', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const login = folder.changes.find((c) => c.name === 'add-login')!
+    expect(login.artifacts).toContain('proposal')
+    expect(login.artifacts).toContain('tasks')
+    expect(login.artifacts).not.toContain('design')
   })
 
-  it('throws for non-existent files', () => {
-    expect(() => loadSpecFile('/non/existent/file.yaml')).toThrow(
-      'vitepress-plugin-openspec',
-    )
+  it('reads created date from .openspec.yaml', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const login = folder.changes.find((c) => c.name === 'add-login')!
+    expect(login.createdDate).toBe('2026-02-01')
   })
 
-  it('throws for unsupported extensions', () => {
-    // Create a temp file with unsupported extension isn't practical here,
-    // so we just ensure the guard regex is correct via slug tests above.
-    // A real .txt file would throw.
-    expect(() => loadSpecFile('/non/existent/file.txt')).toThrow()
-  })
-})
-
-describe('extractEndpoints', () => {
-  it('extracts all endpoints from a spec', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    expect(endpoints.length).toBe(5)
+  it('reads archived changes from openspec/changes/archive/', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    expect(folder.archivedChanges).toHaveLength(2)
+    const standard = folder.archivedChanges.find((c) => c.name === 'old-feature')!
+    expect(standard.archivedDate).toBe('2026-01-15')
+    expect(standard.archiveFolderName).toBe('2026-01-15-old-feature')
   })
 
-  it('captures method, path and tags', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const listSpecs = endpoints.find((e) => e.operationId === 'listSpecs')
-    expect(listSpecs).toBeDefined()
-    expect(listSpecs!.method).toBe('GET')
-    expect(listSpecs!.path).toBe('/specs')
-    expect(listSpecs!.tags).toContain('specs')
+  it('reads non-standard archive folder names without date prefix', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const legacy = folder.archivedChanges.find((c) => c.name === 'legacy-feature')!
+    expect(legacy).toBeDefined()
+    expect(legacy.archivedDate).toBeUndefined()
+    expect(legacy.archiveFolderName).toBe('legacy-feature')
   })
 
-  it('returns empty array when paths is missing', () => {
-    expect(extractEndpoints({})).toEqual([])
+  it('throws for non-existent directory', () => {
+    expect(() => readOpenSpecFolder('/non/existent')).toThrow('vitepress-plugin-openspec')
   })
 })
 
-describe('parseSpec', () => {
-  it('returns correct title, version and description', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    expect(parsed.title).toBe('Sample OpenSpec API')
-    expect(parsed.version).toBe('1.0.0')
-    expect(parsed.description).toBe(
-      'A sample OpenSpec for the vitepress-plugin-openspec tests.',
-    )
+describe('generateSpecPage', () => {
+  it('starts with the capability name as H1', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).toMatch(/^# auth-flow/)
   })
 
-  it('collects unique tags', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    expect(parsed.tags).toContain('specs')
-    expect(parsed.tags).toContain('plugins')
-    expect(new Set(parsed.tags).size).toBe(parsed.tags.length)
-  })
-
-  it('uses defaults when info fields are missing', () => {
-    const parsed = parseSpec({})
-    expect(parsed.title).toBe('API')
-    expect(parsed.version).toBe('1.0.0')
-    expect(parsed.endpoints).toEqual([])
+  it('includes the spec content', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).toContain('User can log in')
   })
 })
 
-describe('generateEndpointMarkdown', () => {
-  it('contains the HTTP method and path in the heading', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const md = generateEndpointMarkdown(endpoints[0]!, true)
-    expect(md).toContain(`# ${endpoints[0]!.method} ${endpoints[0]!.path}`)
+describe('generateSpecsIndexPage', () => {
+  it('contains links to all specs', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const page = generateSpecsIndexPage(folder.specs, 'openspec')
+    expect(page).toContain('/openspec/specs/auth-flow/')
+    expect(page).toContain('/openspec/specs/data-export/')
   })
 
-  it('includes summary when present', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const listSpecs = endpoints.find((e) => e.operationId === 'listSpecs')!
-    const md = generateEndpointMarkdown(listSpecs, true)
-    expect(md).toContain('List all specs')
-  })
-
-  it('omits schema comment when includeSchemas is false', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const md = generateEndpointMarkdown(endpoints[0]!, false)
-    expect(md).not.toContain('Schema details')
+  it('shows placeholder for empty specs', () => {
+    const page = generateSpecsIndexPage([], 'openspec')
+    expect(page).toContain('No specifications defined yet')
   })
 })
 
-describe('generateIndexMarkdown', () => {
-  it('contains the spec title', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    const md = generateIndexMarkdown(parsed, 'api')
-    expect(md).toContain('# Sample OpenSpec API')
+describe('generateChangeIndexPage', () => {
+  it('contains the change name as H1', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.changes.find((c) => c.name === 'add-login')!
+    const page = generateChangeIndexPage(change, 'openspec')
+    expect(page).toMatch(/^# add-login/)
   })
 
-  it('lists all endpoints in a table', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    const md = generateIndexMarkdown(parsed, 'api')
-    for (const endpoint of parsed.endpoints) {
-      expect(md).toContain(endpoint.path)
-    }
+  it('includes links to present artifacts', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.changes.find((c) => c.name === 'add-login')!
+    const page = generateChangeIndexPage(change, 'openspec')
+    expect(page).toContain('/openspec/changes/add-login/proposal')
+    expect(page).toContain('/openspec/changes/add-login/tasks')
+    expect(page).not.toContain('design')
   })
 
-  it('table has Method | Path | Summary header', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    const md = generateIndexMarkdown(parsed, 'api')
-    expect(md).toContain('| Method | Path | Summary |')
+  it('includes archived path for archived changes', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.archivedChanges.find((c) => c.name === 'old-feature')!
+    const page = generateChangeIndexPage(change, 'openspec')
+    expect(page).toContain('/openspec/changes/archive/2026-01-15-old-feature/proposal')
   })
 
-  it('table rows are sorted by tag then path alphabetically', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const parsed = parseSpec(spec)
-    const md = generateIndexMarkdown(parsed, 'api')
-    const lines = md.split('\n')
-    const tableRows = lines.filter((l) => l.startsWith('| `'))
-    // "plugins" tag comes before "specs" alphabetically
-    const pluginsIdx = tableRows.findIndex((r) => r.includes('/plugins'))
-    const specsIdx = tableRows.findIndex((r) => r.includes('/specs'))
-    expect(pluginsIdx).toBeLessThan(specsIdx)
+  it('includes correct archive path for non-standard (undated) archive folder names', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.archivedChanges.find((c) => c.name === 'legacy-feature')!
+    const page = generateChangeIndexPage(change, 'openspec')
+    expect(page).toContain('/openspec/changes/archive/legacy-feature/proposal')
+    expect(page).not.toContain('undefined')
   })
 })
 
-describe('groupEndpointsByTag', () => {
-  it('groups endpoints by first tag, sorted alphabetically', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const groups = groupEndpointsByTag(endpoints, 'api')
-    const tagNames = groups.map((g) => g.text)
-    expect(tagNames[0]).toBe('plugins')
-    expect(tagNames[1]).toBe('specs')
-    expect(tagNames[tagNames.length - 1]).toBe('Other')
+describe('generateChangesIndexPage', () => {
+  it('lists active changes', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const page = generateChangesIndexPage(folder, 'openspec')
+    expect(page).toContain('/openspec/changes/add-login/')
+    expect(page).toContain('/openspec/changes/fix-bug/')
   })
 
-  it('all groups have collapsed: false', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const groups = groupEndpointsByTag(endpoints, 'api')
-    for (const group of groups) {
-      expect(group.collapsed).toBe(false)
-    }
-  })
-
-  it('untagged endpoints appear in Other group', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const groups = groupEndpointsByTag(endpoints, 'api')
-    const other = groups.find((g) => g.text === 'Other')
-    expect(other).toBeDefined()
-    expect(other!.items!.some((i) => i.link?.includes('untagged'))).toBe(true)
-  })
-
-  it('child item links include the outDir prefix', () => {
-    const spec = loadSpecFile(SAMPLE_YAML)
-    const endpoints = extractEndpoints(spec)
-    const groups = groupEndpointsByTag(endpoints, 'myapi')
-    const allLinks = groups.flatMap((g) => g.items ?? []).map((i) => i.link)
-    expect(allLinks.every((l) => l?.startsWith('/myapi/'))).toBe(true)
+  it('includes Archiv section with archived changes', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const page = generateChangesIndexPage(folder, 'openspec')
+    expect(page).toContain('## Archiv')
+    expect(page).toContain('old-feature')
   })
 })
 
-import { generateSidebarFromSpec } from '../plugin.js'
-
-describe('generateSidebarFromSpec', () => {
-  it('returns sidebar items for a valid spec', () => {
-    const sidebar = generateSidebarFromSpec(SAMPLE_YAML, { outDir: 'api' })
-    expect(sidebar.length).toBeGreaterThan(0)
-    expect(sidebar[0]!.text).toBe('Sample OpenSpec API')
+describe('generateOpenSpecSidebar', () => {
+  it('returns Specifications and Changes groups', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const texts = sidebar.map((g) => g.text)
+    expect(texts).toContain('Specifications')
+    expect(texts).toContain('Changes')
   })
 
-  it('groups by tags when groupByTags is true, sorted alphabetically', () => {
-    const sidebar = generateSidebarFromSpec(SAMPLE_YAML, { outDir: 'api', groupByTags: true })
-    const items = sidebar[0]!.items!
-    const tagNames = items.map((i) => i.text)
-    expect(tagNames).toContain('specs')
-    expect(tagNames).toContain('plugins')
-    expect(tagNames.indexOf('plugins')).toBeLessThan(tagNames.indexOf('specs'))
+  it('includes Archiv group when archived changes exist', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const texts = sidebar.map((g) => g.text)
+    expect(texts).toContain('Archiv')
   })
 
-  it('returns an empty array for a missing file without throwing', () => {
-    const sidebar = generateSidebarFromSpec('/non/existent/spec.yaml')
-    expect(sidebar).toEqual([])
+  it('Archiv group is collapsed by default', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const archiv = sidebar.find((g) => g.text === 'Archiv')!
+    expect(archiv.collapsed).toBe(true)
+  })
+
+  it('Specifications group contains spec items', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const specs = sidebar.find((g) => g.text === 'Specifications')!
+    const links = specs.items!.map((i) => i.link)
+    expect(links).toContain('/openspec/specs/auth-flow/')
   })
 })
 
 describe('openspecNav', () => {
-  it('returns nav entry with spec title as default text', () => {
-    const nav = openspecNav({ spec: SAMPLE_YAML, outDir: 'api' })
-    expect(nav.text).toBe('Sample OpenSpec API')
-    expect(nav.link).toBe('/api/')
+  it('returns nav entry with default text "Docs"', () => {
+    const nav = openspecNav(FIXTURE)
+    expect(nav.text).toBe('Docs')
+    expect(nav.link).toBe('/openspec/')
   })
 
-  it('uses custom text when provided', () => {
-    const nav = openspecNav({ spec: SAMPLE_YAML, outDir: 'api', text: 'My Docs' })
-    expect(nav.text).toBe('My Docs')
-    expect(nav.link).toBe('/api/')
+  it('uses custom text and outDir', () => {
+    const nav = openspecNav(FIXTURE, { outDir: 'project-docs', text: 'Projektdoku' })
+    expect(nav.text).toBe('Projektdoku')
+    expect(nav.link).toBe('/project-docs/')
   })
 
-  it('defaults outDir to "api" when not specified', () => {
-    const nav = openspecNav({ spec: SAMPLE_YAML })
-    expect(nav.link).toBe('/api/')
-  })
-
-  it('throws a descriptive error for a missing spec file', () => {
-    expect(() => openspecNav({ spec: '/non/existent/spec.yaml' })).toThrow(
-      'vitepress-plugin-openspec',
-    )
+  it('throws for non-existent directory', () => {
+    expect(() => openspecNav('/non/existent')).toThrow('vitepress-plugin-openspec')
   })
 })
