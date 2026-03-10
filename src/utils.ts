@@ -1,143 +1,272 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
-import type { NavItem, ParsedEndpoint, ParsedSpec, SidebarItem } from './types.js'
+import type {
+  CapabilitySpec,
+  Change,
+  ChangeArtifact,
+  NavItem,
+  OpenSpecFolder,
+  SidebarItem,
+} from './types.js'
 
-/**
- * Reads and parses an OpenAPI spec file (JSON or YAML).
- * Throws if the file cannot be read or parsed.
- */
-export function loadSpecFile(filePath: string): Record<string, unknown> {
-  const resolved = path.resolve(filePath)
-  if (!fs.existsSync(resolved)) {
-    throw new Error(`[vitepress-plugin-openspec] Spec file not found: ${resolved}`)
+// ---------------------------------------------------------------------------
+// Folder reader
+// ---------------------------------------------------------------------------
+
+function readOpenSpecYaml(dir: string): Record<string, unknown> {
+  const yamlPath = path.join(dir, '.openspec.yaml')
+  if (!fs.existsSync(yamlPath)) return {}
+  try {
+    return (yaml.load(fs.readFileSync(yamlPath, 'utf-8')) ?? {}) as Record<string, unknown>
+  } catch {
+    return {}
   }
+}
 
-  const content = fs.readFileSync(resolved, 'utf-8')
-  const ext = path.extname(resolved).toLowerCase()
+function formatDate(val: unknown): string | undefined {
+  if (!val) return undefined
+  if (val instanceof Date) return val.toISOString().slice(0, 10)
+  return String(val)
+}
 
-  if (ext === '.json') {
-    return JSON.parse(content) as Record<string, unknown>
+function readArtifacts(dir: string): ChangeArtifact[] {
+  const artifacts: ChangeArtifact[] = []
+  for (const name of ['proposal', 'design', 'tasks'] as ChangeArtifact[]) {
+    if (fs.existsSync(path.join(dir, `${name}.md`))) artifacts.push(name)
   }
-
-  if (ext === '.yaml' || ext === '.yml') {
-    return yaml.load(content) as Record<string, unknown>
-  }
-
-  throw new Error(
-    `[vitepress-plugin-openspec] Unsupported file extension "${ext}". Use .json, .yaml, or .yml.`,
-  )
+  return artifacts
 }
 
 /**
- * Converts a method + path string into a URL-safe slug.
+ * Scans an openspec/ directory and returns a structured representation of all
+ * canonical specs, active changes, and archived changes.
  *
- * @example slugify('GET', '/users/{id}') => 'get-users-id'
+ * Throws if the directory does not exist.
  */
-export function slugify(method: string, endpointPath: string, operationId?: string): string {
-  if (operationId) {
-    return operationId
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase()
+export function readOpenSpecFolder(dir: string): OpenSpecFolder {
+  const resolved = path.resolve(dir)
+  if (!fs.existsSync(resolved)) {
+    throw new Error(`[vitepress-plugin-openspec] openspec directory not found: ${resolved}`)
   }
 
-  const pathSlug = endpointPath
-    .replace(/\{([^}]+)\}/g, '$1')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase()
-
-  return `${method.toLowerCase()}-${pathSlug}`
-}
-
-/**
- * Extracts all endpoints from a raw OpenAPI spec object.
- * Supports both OpenAPI 3.x and Swagger 2.x.
- */
-export function extractEndpoints(spec: Record<string, unknown>): ParsedEndpoint[] {
-  const endpoints: ParsedEndpoint[] = []
-  const paths = spec.paths as Record<string, Record<string, unknown>> | undefined
-
-  if (!paths) return endpoints
-
-  const httpMethods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
-
-  for (const [endpointPath, pathItem] of Object.entries(paths)) {
-    if (!pathItem || typeof pathItem !== 'object') continue
-
-    for (const method of httpMethods) {
-      const operation = pathItem[method] as Record<string, unknown> | undefined
-      if (!operation) continue
-
-      const tags = Array.isArray(operation.tags)
-        ? (operation.tags as string[])
-        : []
-
-      endpoints.push({
-        method: method.toUpperCase(),
-        path: endpointPath,
-        summary: operation.summary as string | undefined,
-        description: operation.description as string | undefined,
-        tags,
-        operationId: operation.operationId as string | undefined,
-        slug: slugify(method, endpointPath, operation.operationId as string | undefined),
+  // --- Canonical specs ---
+  const specs: CapabilitySpec[] = []
+  const specsDir = path.join(resolved, 'specs')
+  if (fs.existsSync(specsDir)) {
+    for (const entry of fs.readdirSync(specsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const specPath = path.join(specsDir, entry.name, 'spec.md')
+      if (!fs.existsSync(specPath)) continue
+      specs.push({
+        name: entry.name,
+        specPath,
+        content: fs.readFileSync(specPath, 'utf-8'),
       })
     }
   }
 
-  return endpoints
-}
-
-/**
- * Parses a raw OpenAPI spec object into a structured {@link ParsedSpec}.
- */
-export function parseSpec(spec: Record<string, unknown>): ParsedSpec {
-  const info = (spec.info ?? {}) as Record<string, unknown>
-  const title = (info.title as string | undefined) ?? 'API'
-  const version = (info.version as string | undefined) ?? '1.0.0'
-  const description = info.description as string | undefined
-
-  const endpoints = extractEndpoints(spec)
-  const tags = [...new Set(endpoints.flatMap((e) => e.tags))]
-
-  return { title, version, description, endpoints, tags }
-}
-
-/**
- * Groups endpoints by their first tag and returns VitePress sidebar groups
- * sorted alphabetically. Untagged endpoints are collected under "Other".
- */
-export function groupEndpointsByTag(endpoints: ParsedEndpoint[], outDir: string): SidebarItem[] {
-  const tagMap = new Map<string, ParsedEndpoint[]>()
-  const untagged: ParsedEndpoint[] = []
-
-  for (const endpoint of endpoints) {
-    if (endpoint.tags.length === 0) {
-      untagged.push(endpoint)
-    } else {
-      const tag = endpoint.tags[0]!
-      if (!tagMap.has(tag)) tagMap.set(tag, [])
-      tagMap.get(tag)!.push(endpoint)
+  // --- Active changes ---
+  const changes: Change[] = []
+  const changesDir = path.join(resolved, 'changes')
+  if (fs.existsSync(changesDir)) {
+    for (const entry of fs.readdirSync(changesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === 'archive') continue
+      const changeDir = path.join(changesDir, entry.name)
+      if (!fs.existsSync(path.join(changeDir, '.openspec.yaml'))) continue
+      const meta = readOpenSpecYaml(changeDir)
+      changes.push({
+        name: entry.name,
+        dir: changeDir,
+        artifacts: readArtifacts(changeDir),
+        createdDate: formatDate(meta.created),
+      })
     }
   }
 
-  const groups: SidebarItem[] = [...tagMap.keys()].sort().map((tag) => ({
-    text: tag,
-    collapsed: false,
-    items: tagMap.get(tag)!.map((e) => ({
-      text: `${e.method} ${e.path}`,
-      link: `/${outDir}/${e.slug}`,
-    })),
-  }))
+  // --- Archived changes ---
+  const archivedChanges: Change[] = []
+  const archiveDir = path.join(changesDir, 'archive')
+  if (fs.existsSync(archiveDir)) {
+    for (const entry of fs.readdirSync(archiveDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const changeDir = path.join(archiveDir, entry.name)
+      // Parse YYYY-MM-DD-<name> format
+      const match = entry.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)$/)
+      const archivedDate = match?.[1]
+      const name = match?.[2] ?? entry.name
+      const meta = readOpenSpecYaml(changeDir)
+      archivedChanges.push({
+        name,
+        dir: changeDir,
+        artifacts: readArtifacts(changeDir),
+        createdDate: formatDate(meta.created),
+        archivedDate,
+      })
+    }
+  }
 
-  if (untagged.length > 0) {
+  return { dir: resolved, specs, changes, archivedChanges }
+}
+
+// ---------------------------------------------------------------------------
+// Page generators
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates VitePress Markdown for a canonical capability spec page.
+ */
+export function generateSpecPage(spec: CapabilitySpec): string {
+  const lines: string[] = []
+  lines.push(`# ${spec.name}`)
+  lines.push('')
+  lines.push(spec.content.trimEnd())
+  lines.push('')
+  return lines.join('\n')
+}
+
+/**
+ * Generates the index page listing all canonical specs.
+ */
+export function generateSpecsIndexPage(specs: CapabilitySpec[], outDir: string): string {
+  const lines: string[] = []
+  lines.push('# Specifications')
+  lines.push('')
+  lines.push('Canonical capability specifications for this project.')
+  lines.push('')
+  if (specs.length === 0) {
+    lines.push('*No specifications defined yet.*')
+  } else {
+    for (const spec of specs) {
+      lines.push(`- [${spec.name}](/${outDir}/specs/${spec.name}/)`)
+    }
+  }
+  lines.push('')
+  return lines.join('\n')
+}
+
+/**
+ * Generates the index page for a single change.
+ */
+export function generateChangeIndexPage(change: Change, outDir: string): string {
+  const lines: string[] = []
+  lines.push(`# ${change.name}`)
+  lines.push('')
+  if (change.createdDate) {
+    lines.push(`**Created:** ${change.createdDate}`)
+    lines.push('')
+  }
+  if (change.archivedDate) {
+    lines.push(`**Archived:** ${change.archivedDate}`)
+    lines.push('')
+  }
+  lines.push('## Artifacts')
+  lines.push('')
+  const prefix = change.archivedDate
+    ? `/${outDir}/changes/archive/${change.archivedDate}-${change.name}`
+    : `/${outDir}/changes/${change.name}`
+  for (const artifact of change.artifacts) {
+    const label = artifact.charAt(0).toUpperCase() + artifact.slice(1)
+    lines.push(`- [${label}](${prefix}/${artifact})`)
+  }
+  lines.push('')
+  return lines.join('\n')
+}
+
+/**
+ * Generates the changes overview page listing active and archived changes.
+ */
+export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string): string {
+  const lines: string[] = []
+  lines.push('# Changes')
+  lines.push('')
+
+  if (folder.changes.length === 0) {
+    lines.push('*No active changes.*')
+  } else {
+    lines.push('## Active')
+    lines.push('')
+    for (const change of folder.changes) {
+      const date = change.createdDate ? ` *(${change.createdDate})*` : ''
+      lines.push(`- [${change.name}](/${outDir}/changes/${change.name}/)${date}`)
+    }
+  }
+
+  if (folder.archivedChanges.length > 0) {
+    lines.push('')
+    lines.push('## Archiv')
+    lines.push('')
+    for (const change of folder.archivedChanges) {
+      const date = change.archivedDate ? ` *(archiviert: ${change.archivedDate})*` : ''
+      lines.push(
+        `- [${change.name}](/${outDir}/changes/archive/${change.archivedDate}-${change.name}/)${date}`,
+      )
+    }
+  }
+
+  lines.push('')
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Navigation helpers
+// ---------------------------------------------------------------------------
+
+function changeItems(change: Change, outDir: string, isArchived = false): SidebarItem[] {
+  const prefix = isArchived
+    ? `/${outDir}/changes/archive/${change.archivedDate}-${change.name}`
+    : `/${outDir}/changes/${change.name}`
+  return change.artifacts.map((a) => ({
+    text: a.charAt(0).toUpperCase() + a.slice(1),
+    link: `${prefix}/${a}`,
+  }))
+}
+
+/**
+ * Returns a VitePress sidebar configuration for the OpenSpec documentation.
+ * Includes groups for Specifications, active Changes, and archived Changes.
+ */
+export function generateOpenSpecSidebar(
+  specDir: string,
+  options: { outDir?: string } = {},
+): SidebarItem[] {
+  const outDir = options.outDir ?? 'openspec'
+  const folder = readOpenSpecFolder(specDir)
+  const groups: SidebarItem[] = []
+
+  // Specifications group
+  groups.push({
+    text: 'Specifications',
+    collapsed: false,
+    items: [
+      { text: 'Overview', link: `/${outDir}/specs/` },
+      ...folder.specs.map((s) => ({ text: s.name, link: `/${outDir}/specs/${s.name}/` })),
+    ],
+  })
+
+  // Changes group
+  groups.push({
+    text: 'Changes',
+    collapsed: false,
+    items: [
+      { text: 'Overview', link: `/${outDir}/changes/` },
+      ...folder.changes.map((c) => ({
+        text: c.name,
+        collapsed: true,
+        items: changeItems(c, outDir),
+      })),
+    ],
+  })
+
+  // Archive group (only if non-empty)
+  if (folder.archivedChanges.length > 0) {
     groups.push({
-      text: 'Other',
-      collapsed: false,
-      items: untagged.map((e) => ({
-        text: `${e.method} ${e.path}`,
-        link: `/${outDir}/${e.slug}`,
+      text: 'Archiv',
+      collapsed: true,
+      items: folder.archivedChanges.map((c) => ({
+        text: c.name,
+        collapsed: true,
+        items: changeItems(c, outDir, true),
       })),
     })
   }
@@ -146,118 +275,20 @@ export function groupEndpointsByTag(endpoints: ParsedEndpoint[], outDir: string)
 }
 
 /**
- * Returns a VitePress nav entry pointing to the generated API section.
- * Reads the spec's `info.title` as the default nav label.
- * Throws with a descriptive message if the spec file is not found.
+ * Returns a VitePress nav entry for the OpenSpec documentation section.
  */
-export function openspecNav(options: {
-  spec: string
-  outDir?: string
-  text?: string
-}): NavItem {
-  const outDir = options.outDir ?? 'api'
-  const raw = loadSpecFile(options.spec)
-  const parsed = parseSpec(raw)
+export function openspecNav(
+  specDir: string,
+  options: { outDir?: string; text?: string } = {},
+): NavItem {
+  const outDir = options.outDir ?? 'openspec'
+  if (!fs.existsSync(path.resolve(specDir))) {
+    throw new Error(
+      `[vitepress-plugin-openspec] openspec directory not found: ${path.resolve(specDir)}`,
+    )
+  }
   return {
-    text: options.text ?? parsed.title,
+    text: options.text ?? 'Docs',
     link: `/${outDir}/`,
   }
-}
-
-/**
- * Generates the Markdown content for an individual endpoint page.
- */
-export function generateEndpointMarkdown(
-  endpoint: ParsedEndpoint,
-  includeSchemas: boolean,
-): string {
-  const lines: string[] = []
-
-  lines.push(`# ${endpoint.method} ${endpoint.path}`)
-  lines.push('')
-
-  if (endpoint.summary) {
-    lines.push(`> ${endpoint.summary}`)
-    lines.push('')
-  }
-
-  if (endpoint.description) {
-    lines.push(endpoint.description)
-    lines.push('')
-  }
-
-  lines.push('## Details')
-  lines.push('')
-  lines.push(`| Field | Value |`)
-  lines.push(`| --- | --- |`)
-  lines.push(`| **Method** | \`${endpoint.method}\` |`)
-  lines.push(`| **Path** | \`${endpoint.path}\` |`)
-
-  if (endpoint.operationId) {
-    lines.push(`| **Operation ID** | \`${endpoint.operationId}\` |`)
-  }
-
-  if (endpoint.tags.length > 0) {
-    lines.push(`| **Tags** | ${endpoint.tags.join(', ')} |`)
-  }
-
-  lines.push('')
-
-  if (includeSchemas) {
-    lines.push('<!-- Schema details can be rendered here via a Vue component -->')
-    lines.push('')
-  }
-
-  return lines.join('\n')
-}
-
-/**
- * Generates the Markdown content for the API overview/index page.
- */
-export function generateIndexMarkdown(parsed: ParsedSpec, outDir: string): string {
-  const lines: string[] = []
-
-  lines.push(`# ${parsed.title}`)
-  lines.push('')
-
-  if (parsed.description) {
-    lines.push(parsed.description)
-    lines.push('')
-  }
-
-  lines.push(`**Version:** ${parsed.version}`)
-  lines.push('')
-  lines.push(`**Endpoints:** ${parsed.endpoints.length}`)
-  lines.push('')
-
-  if (parsed.tags.length > 0) {
-    lines.push('## Tags')
-    lines.push('')
-    for (const tag of parsed.tags) {
-      lines.push(`- ${tag}`)
-    }
-    lines.push('')
-  }
-
-  lines.push('## Endpoints')
-  lines.push('')
-  lines.push('| Method | Path | Summary |')
-  lines.push('| --- | --- | --- |')
-
-  const sorted = [...parsed.endpoints].sort((a, b) => {
-    const tagA = a.tags[0] ?? 'Other'
-    const tagB = b.tags[0] ?? 'Other'
-    if (tagA !== tagB) return tagA.localeCompare(tagB)
-    return a.path.localeCompare(b.path)
-  })
-
-  for (const endpoint of sorted) {
-    const link = `[${endpoint.path}](${outDir}/${endpoint.slug})`
-    const summary = endpoint.summary ?? ''
-    lines.push(`| \`${endpoint.method}\` | ${link} | ${summary} |`)
-  }
-
-  lines.push('')
-
-  return lines.join('\n')
 }

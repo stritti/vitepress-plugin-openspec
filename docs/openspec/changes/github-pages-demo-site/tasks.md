@@ -36,5 +36,5 @@
 - [x] 5.1 Run `bun run docs:build` locally and confirm zero errors
 - [x] 5.2 Verify built `dist/` contains `index.html` and `api/` subdirectory
 - [x] 5.3 Validate workflow YAML syntax (`act --list` or GitHub's YAML linter)
-- [x] 5.4 Enable GitHub Pages on the repository (Settings → Pages → Source: GitHub Actions) — one-time manual step
+- [ ] 5.4 Enable GitHub Pages on the repository (Settings → Pages → Source: GitHub Actions) — one-time manual step
 - [ ] 5.5 Push to `main` and confirm workflow completes successfully and site is live

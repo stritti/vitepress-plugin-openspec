@@ -1,3 +1,11 @@
-export { openspec as default, openspec, generateSidebarFromSpec } from './plugin.js'
-export { openspecNav } from './utils.js'
-export type { NavItem, OpenSpecPluginOptions, ParsedEndpoint, ParsedSpec, SidebarItem } from './types.js'
+export { openspec as default, openspec } from './plugin.js'
+export { generateOpenSpecSidebar, openspecNav } from './utils.js'
+export type {
+  CapabilitySpec,
+  Change,
+  ChangeArtifact,
+  NavItem,
+  OpenSpecFolder,
+  OpenSpecPluginOptions,
+  SidebarItem,
+} from './types.js'

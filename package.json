@@ -1,6 +1,6 @@
 {
   "name": "vitepress-plugin-openspec",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A VitePress plugin that integrates OpenSpec documentation into your VitePress site",
   "keywords": [
     "openspec",
@@ -36,7 +36,9 @@
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:dev": "cd docs && bun run dev",
+    "docs:build": "cd docs && bun run build"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
