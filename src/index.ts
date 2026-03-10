@@ -1,4 +1,4 @@
-export { openspec as default, openspec } from './plugin.js'
+export { openspec as default, openspec, generateOpenSpecPages } from './plugin.js'
 export { generateOpenSpecSidebar, openspecNav } from './utils.js'
 export type {
   CapabilitySpec,
