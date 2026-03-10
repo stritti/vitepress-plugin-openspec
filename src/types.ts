@@ -32,6 +32,8 @@ export interface OpenSpecPluginOptions {
 export interface CapabilitySpec {
   /** Folder name (kebab-case capability identifier) */
   name: string
+  /** Optional display title from spec.md frontmatter. Overrides humanized name. */
+  title?: string
   /** Absolute path to the spec.md file */
   specPath: string
   /** Raw Markdown content of the spec */
@@ -49,6 +51,8 @@ export type ChangeArtifact = 'proposal' | 'design' | 'tasks'
 export interface Change {
   /** Change directory name (e.g. "my-feature" or for archived: "my-feature" extracted from "2026-03-10-my-feature") */
   name: string
+  /** Optional display title from .openspec.yaml. Overrides humanized name. */
+  title?: string
   /** Absolute path to the change directory */
   dir: string
   /** Which artifact files are present */
