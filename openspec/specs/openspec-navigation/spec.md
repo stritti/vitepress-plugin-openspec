@@ -1,37 +1,41 @@
 ## ADDED Requirements
 
-### Requirement: generateOpenSpecSidebar gibt eine strukturierte Sidebar zurück
-`generateOpenSpecSidebar(specDir: string, options?)` SHALL synchron eine VitePress-Sidebar-Konfiguration zurückgeben mit drei Gruppen: "Specifications" (alle Canonical Specs), "Changes" (alle aktiven Changes) und "Archiv" (alle archivierten Changes, eingeklappt).
+### Requirement: generateOpenSpecSidebar returns a structured sidebar
 
-#### Scenario: Vollständige Sidebar
-- **WHEN** `generateOpenSpecSidebar('./openspec', { outDir: 'project-docs' })` aufgerufen wird
-- **THEN** enthält das Ergebnis eine Gruppe `{ text: 'Specifications', items: [...] }`, eine Gruppe `{ text: 'Changes', items: [...] }` und eine Gruppe `{ text: 'Archiv', collapsed: true, items: [...] }`
+`generateOpenSpecSidebar(specDir: string, options?)` SHALL synchronously return a VitePress sidebar configuration with three groups: "Specifications" (all canonical specs), "Changes" (all active changes), and "Archiv" (all archived changes, collapsed).
 
-#### Scenario: Leeres Archiv wird weggelassen
-- **WHEN** keine archivierten Changes existieren
-- **THEN** enthält das Ergebnis keine Archiv-Gruppe
+#### Scenario: Full sidebar
+- **WHEN** `generateOpenSpecSidebar('./openspec', { outDir: 'project-docs' })` is called
+- **THEN** the result contains a group `{ text: 'Specifications', items: [...] }`, a group `{ text: 'Changes', items: [...] }`, and a group `{ text: 'Archiv', collapsed: true, items: [...] }`
 
-### Requirement: Change-Einträge in der Sidebar haben Untereinträge für Artefakte
-Jeder aktive Change in der Sidebar SHALL als eingeklappte Gruppe mit Links zu den vorhandenen Artefakten (Proposal, Design, Tasks) dargestellt werden.
+#### Scenario: Empty archive is omitted
+- **WHEN** no archived changes exist
+- **THEN** the result contains no archive group
 
-#### Scenario: Change mit allen Artefakten
-- **WHEN** ein Change alle drei Artefakte hat
-- **THEN** hat der Change-Sidebar-Eintrag `items: [{ text: 'Proposal' }, { text: 'Design' }, { text: 'Tasks' }]`
+### Requirement: Change entries in the sidebar have sub-items for artifacts
 
-### Requirement: openspecNav gibt einen VitePress-Nav-Eintrag zurück
-`openspecNav(specDir: string, options?)` SHALL synchron `{ text: string, link: string }` zurückgeben, wobei `text` konfigurierbar ist (Default: `'Docs'`) und `link` auf `/<outDir>/` zeigt.
+Each active change in the sidebar SHALL be rendered as a collapsed group with links to the available artifacts (Proposal, Design, Tasks).
 
-#### Scenario: Standard-Nav-Eintrag
-- **WHEN** `openspecNav('./openspec', { outDir: 'project-docs' })` aufgerufen wird
-- **THEN** gibt es `{ text: 'Docs', link: '/project-docs/' }`
+#### Scenario: Change with all artifacts
+- **WHEN** a change has all three artifacts
+- **THEN** the change sidebar entry has `items: [{ text: 'Proposal' }, { text: 'Design' }, { text: 'Tasks' }]`
 
-#### Scenario: Benutzerdefinierter Text
-- **WHEN** `openspecNav('./openspec', { outDir: 'project-docs', text: 'Projektdoku' })` aufgerufen wird
-- **THEN** gibt es `{ text: 'Projektdoku', link: '/project-docs/' }`
+### Requirement: openspecNav returns a VitePress nav entry
 
-### Requirement: openspecPlugin ist als Vite-Plugin exportiert
-`openspecPlugin(options)` SHALL als named export `openspec` aus dem Paket exportiert werden und ein gültiges Vite-Plugin-Objekt zurückgeben.
+`openspecNav(specDir: string, options?)` SHALL synchronously return `{ text: string, link: string }`, where `text` is configurable (default: `'Docs'`) and `link` points to `/<outDir>/`.
 
-#### Scenario: Plugin-Export
-- **WHEN** `import openspec from 'vitepress-plugin-openspec'` importiert wird
-- **THEN** kann `openspec({ specDir: './openspec' })` als Vite-Plugin in `defineConfig` verwendet werden
+#### Scenario: Default nav entry
+- **WHEN** `openspecNav('./openspec', { outDir: 'project-docs' })` is called
+- **THEN** it returns `{ text: 'Docs', link: '/project-docs/' }`
+
+#### Scenario: Custom text
+- **WHEN** `openspecNav('./openspec', { outDir: 'project-docs', text: 'Project Docs' })` is called
+- **THEN** it returns `{ text: 'Project Docs', link: '/project-docs/' }`
+
+### Requirement: openspecPlugin is exported as a Vite plugin
+
+`openspecPlugin(options)` SHALL be exported as the named export `openspec` from the package and return a valid Vite plugin object.
+
+#### Scenario: Plugin export
+- **WHEN** `import openspec from 'vitepress-plugin-openspec'` is imported
+- **THEN** `openspec({ specDir: './openspec' })` can be used as a Vite plugin in `defineConfig`

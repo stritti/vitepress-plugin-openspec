@@ -1,33 +1,33 @@
 ## Context
 
-Der Plugin schreibt in `configResolved` alle generierten Markdown-Seiten in `<srcDir>/<outDir>/`. Bei der Default-Konfiguration (`outDir: 'openspec'`) landen diese in `docs/openspec/`. Dieser Ordner ist aktuell nicht in `.gitignore` eingetragen und wird daher mitgetrackt.
+The plugin writes all generated Markdown pages to `<srcDir>/<outDir>/` in `configResolved`. With the default configuration (`outDir: 'openspec'`) these land in `docs/openspec/`. This folder is currently not listed in `.gitignore` and is therefore tracked by Git.
 
-Das verursacht zwei Probleme:
-1. **Commit-Lärm**: Jede Änderung an `openspec/` erzeugt Änderungen in `docs/openspec/`
-2. **CLI-Verwirrung**: Die OpenSpec-CLI findet `docs/openspec/` und verwendet es fälschlicherweise als Quell-Verzeichnis
+This causes two problems:
+1. **Commit noise**: Every change to `openspec/` produces changes in `docs/openspec/`
+2. **CLI confusion**: The OpenSpec CLI finds `docs/openspec/` and incorrectly uses it as the source directory
 
 ## Goals / Non-Goals
 
 **Goals:**
-- `docs/<outDir>/` aus Git-Tracking entfernen
-- Generisch formulieren, sodass beliebige `outDir`-Werte abgedeckt sind
+- Remove `docs/<outDir>/` from Git tracking
+- Phrase the entry generically so that any `outDir` value is covered
 
 **Non-Goals:**
-- Änderungen am Plugin-Code
-- Änderungen an der Build-Reihenfolge oder dem Timing-Verhalten
+- Changes to the plugin code
+- Changes to the build order or timing behaviour
 
 ## Decisions
 
-**`.gitignore` auf Docs-Ebene, nicht auf Root-Ebene**
-Der generierte Ordner liegt unter `docs/`. Ein Eintrag `docs/openspec/` im Root-`.gitignore` ist präzise. Alternativ wäre ein `docs/.gitignore` möglich, aber eine Root-Datei ist übersichtlicher.
+**`.gitignore` at docs level, not root level**
+The generated folder lives under `docs/`. An entry `docs/openspec/` in the root `.gitignore` is precise. A `docs/.gitignore` would also work, but a root file is cleaner.
 
-**Generischer Eintrag statt hartcodiertem `docs/openspec/`**
-Da `outDir` konfigurierbar ist, wird der Eintrag im Kommentar erklärt — der konkrete Pfad `docs/openspec/` ist aber ausreichend für dieses Projekt, da `outDir` in `docs/.vitepress/config.ts` fest auf `'openspec'` steht.
+**Generic entry instead of hardcoded `docs/openspec/`**
+Since `outDir` is configurable, the entry is explained in a comment — but the concrete path `docs/openspec/` is sufficient for this project as `outDir` is fixed to `'openspec'` in `docs/.vitepress/config.ts`.
 
-**`git rm --cached` statt Dateien löschen**
-Die Dateien sollen lokal nach dem Build weiter existieren (VitePress braucht sie zum Rendern). Nur das Git-Tracking wird entfernt.
+**`git rm --cached` instead of deleting files**
+The files should continue to exist locally after the build (VitePress needs them to render). Only the Git tracking is removed.
 
 ## Risks / Trade-offs
 
-- **Erster Checkout ohne Build**: Nach einem frischen `git clone` existiert `docs/openspec/` nicht. Der Build muss einmal laufen, bevor VitePress die Seiten kennt (bekanntes Timing-Problem, unabhängig von diesem Change).
-- **CI**: Der GitHub Actions Workflow baut den Plugin und dann die Docs — der generierte Ordner entsteht zur Build-Zeit. Kein Problem.
+- **First checkout without a build**: After a fresh `git clone`, `docs/openspec/` does not exist. The build must run once before VitePress knows about the pages (a known timing issue, independent of this change).
+- **CI**: The GitHub Actions workflow builds the plugin and then the docs — the generated folder is created at build time. No issue.

@@ -1,35 +1,35 @@
 ## Why
 
-Das Plugin heißt `vitepress-plugin-openspec` weil es die **OpenSpec-Projektdokumentation** (openspec.dev) in VitePress integrieren soll — nicht OpenAPI oder Swagger. Die bisherige Implementierung basierte auf einem Missverständnis. Dieser Change ersetzt sie durch die korrekte Funktionalität: die Artefakte aus dem `openspec/`-Ordner eines Projekts werden als strukturierte, navigierbare VitePress-Dokumentationsseiten gerendert.
+The plugin is called `vitepress-plugin-openspec` because it is meant to integrate **OpenSpec project documentation** (openspec.dev) into VitePress — not OpenAPI or Swagger. The previous implementation was based on a misunderstanding. This change replaces it with the correct functionality: the artifacts from a project's `openspec/` folder are rendered as structured, navigable VitePress documentation pages.
 
 ## What Changes
 
-- **BREAKING**: Die bestehende OpenAPI/Swagger-Implementierung (`loadSpecFile`, `extractEndpoints`, `parseSpec`, `generateEndpointMarkdown`, OpenAPI-spezifische Typen) wird vollständig ersetzt
-- Das Plugin liest den `openspec/`-Ordner des Projekts und generiert daraus VitePress-Seiten
-- Canonical Specs (`openspec/specs/<capability>/spec.md`) → eigene Seite pro Capability
-- Change-Artefakte (`openspec/changes/<name>/{proposal,design,tasks}.md`) → eigene Seiten pro Artefakt, gruppiert nach Change
-- Archivierte Changes (`openspec/changes/archive/`) werden als eigener, eingeklappter Sidebar-Bereich dargestellt
-- `generateSidebarFromSpec()` → **BREAKING** ersetzt durch `generateOpenSpecSidebar()`
-- `openspecNav()` bleibt als Konzept erhalten, liest aber den `openspec/`-Ordner statt eine OpenAPI-Datei
+- **BREAKING**: The existing OpenAPI/Swagger implementation (`loadSpecFile`, `extractEndpoints`, `parseSpec`, `generateEndpointMarkdown`, OpenAPI-specific types) is completely replaced
+- The plugin reads the project's `openspec/` folder and generates VitePress pages from it
+- Canonical specs (`openspec/specs/<capability>/spec.md`) → one page per capability
+- Change artifacts (`openspec/changes/<name>/{proposal,design,tasks}.md`) → one page per artifact, grouped by change
+- Archived changes (`openspec/changes/archive/`) are presented as a separate collapsed sidebar section
+- `generateSidebarFromSpec()` → **BREAKING** replaced by `generateOpenSpecSidebar()`
+- `openspecNav()` is retained as a concept but reads the `openspec/` folder instead of an OpenAPI file
 
 ## Capabilities
 
 ### New Capabilities
 
-- `openspec-folder-reader`: Scannt den `openspec/`-Ordner und gibt eine strukturierte Darstellung aller Specs, Changes und archivierten Changes zurück
-- `spec-pages`: Generiert VitePress-Seiten für alle Canonical Specs aus `openspec/specs/` mit Index-Seite
-- `change-pages`: Generiert VitePress-Seiten für alle aktiven und archivierten Changes aus `openspec/changes/` mit Index-Seite pro Change
-- `openspec-navigation`: `generateOpenSpecSidebar()` und `openspecNav()` für die VitePress-Konfiguration
+- `openspec-folder-reader`: Scans the `openspec/` folder and returns a structured representation of all specs, changes, and archived changes
+- `spec-pages`: Generates VitePress pages for all canonical specs from `openspec/specs/` with an index page
+- `change-pages`: Generates VitePress pages for all active and archived changes from `openspec/changes/` with an index page per change
+- `openspec-navigation`: `generateOpenSpecSidebar()` and `openspecNav()` for the VitePress configuration
 
 ### Modified Capabilities
 
-(none — vollständige Neuentwicklung)
+(none — complete rewrite)
 
 ## Impact
 
-- `src/types.ts` — vollständig neu mit OpenSpec-spezifischen Typen; `NavItem` und `SidebarItem` bleiben erhalten
-- `src/utils.ts` — vollständig neu: OpenSpec-Folder-Reader und Seiten-Generator statt OpenAPI-Parser
-- `src/plugin.ts` — vollständig neu: liest `openspec/`-Ordner statt OpenAPI-YAML-Dateien
-- `src/index.ts` — aktualisierte Exports; `generateSidebarFromSpec` entfällt, `generateOpenSpecSidebar` neu
-- `src/__tests__/` — alle bestehenden Tests werden ersetzt; `sample.yaml` wird entfernt
-- `docs/.vitepress/config.ts` — muss auf die neue API umgestellt werden
+- `src/types.ts` — completely rewritten with OpenSpec-specific types; `NavItem` and `SidebarItem` are retained
+- `src/utils.ts` — completely rewritten: OpenSpec folder reader and page generator instead of OpenAPI parser
+- `src/plugin.ts` — completely rewritten: reads `openspec/` folder instead of OpenAPI YAML files
+- `src/index.ts` — updated exports; `generateSidebarFromSpec` removed, `generateOpenSpecSidebar` added
+- `src/__tests__/` — all existing tests replaced; `sample.yaml` removed
+- `docs/.vitepress/config.ts` — must be updated to the new API

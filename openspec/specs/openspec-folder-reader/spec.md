@@ -1,44 +1,48 @@
 ## ADDED Requirements
 
-### Requirement: Plugin liest den openspec-Ordner und gibt eine strukturierte Darstellung zurück
-Die Funktion `readOpenSpecFolder(dir: string): OpenSpecFolder` SHALL den angegebenen Ordner scannen und eine strukturierte Darstellung aller Canonical Specs, aktiven Changes und archivierten Changes zurückgeben.
+### Requirement: Plugin reads the openspec folder and returns a structured representation
 
-#### Scenario: Vollständiger openspec-Ordner
-- **WHEN** `readOpenSpecFolder('./openspec')` auf einen Ordner mit `specs/` und `changes/` aufgerufen wird
-- **THEN** gibt es ein Objekt mit `specs: CapabilitySpec[]`, `changes: Change[]` und `archivedChanges: Change[]`
+The function `readOpenSpecFolder(dir: string): OpenSpecFolder` SHALL scan the given directory and return a structured representation of all canonical specs, active changes, and archived changes.
 
-#### Scenario: Leerer oder fehlender Ordner
-- **WHEN** `readOpenSpecFolder('./openspec')` auf einen nicht existierenden Ordner aufgerufen wird
-- **THEN** wird ein Fehler mit dem Ordnerpfad im Text geworfen
+#### Scenario: Complete openspec folder
+- **WHEN** `readOpenSpecFolder('./openspec')` is called on a folder containing `specs/` and `changes/`
+- **THEN** it returns an object with `specs: CapabilitySpec[]`, `changes: Change[]`, and `archivedChanges: Change[]`
 
-### Requirement: Canonical Specs werden aus openspec/specs/ gelesen
-Für jeden Unterordner in `openspec/specs/` der eine `spec.md` enthält SHALL ein `CapabilitySpec`-Objekt mit `name` (Ordnername) und `specPath` (absoluter Pfad zur spec.md) erstellt werden.
+#### Scenario: Empty or missing folder
+- **WHEN** `readOpenSpecFolder('./openspec')` is called on a non-existent folder
+- **THEN** an error is thrown containing the folder path
 
-#### Scenario: Mehrere Capabilities
-- **WHEN** `openspec/specs/` die Ordner `nav-integration/` und `sidebar-generation/` enthält, jeweils mit `spec.md`
-- **THEN** enthält das Ergebnis zwei `CapabilitySpec`-Einträge mit den korrekten Namen
+### Requirement: Canonical specs are read from openspec/specs/
 
-#### Scenario: Unterordner ohne spec.md wird ignoriert
-- **WHEN** ein Unterordner in `openspec/specs/` keine `spec.md` enthält
-- **THEN** wird er nicht in das Ergebnis aufgenommen
+For each subdirectory in `openspec/specs/` that contains a `spec.md`, a `CapabilitySpec` object SHALL be created with `name` (directory name) and `specPath` (absolute path to spec.md).
 
-### Requirement: Changes werden mit ihren Artefakten gelesen
-Für jeden Unterordner in `openspec/changes/` (außer `archive/`) der eine `.openspec.yaml` enthält SHALL ein `Change`-Objekt erstellt werden mit `name`, `artifacts` (welche von proposal/design/tasks vorhanden sind) und `metadata` aus `.openspec.yaml`.
+#### Scenario: Multiple capabilities
+- **WHEN** `openspec/specs/` contains directories `nav-integration/` and `sidebar-generation/`, each with `spec.md`
+- **THEN** the result contains two `CapabilitySpec` entries with the correct names
 
-#### Scenario: Change mit allen Artefakten
-- **WHEN** `openspec/changes/my-feature/` die Dateien `.openspec.yaml`, `proposal.md`, `design.md`, `tasks.md` enthält
-- **THEN** enthält das Change-Objekt alle drei Artefakte in `artifacts`
+#### Scenario: Subdirectory without spec.md is ignored
+- **WHEN** a subdirectory in `openspec/specs/` contains no `spec.md`
+- **THEN** it is not included in the result
 
-#### Scenario: Change mit fehlendem Design
-- **WHEN** `openspec/changes/my-feature/` nur `.openspec.yaml` und `proposal.md` enthält
-- **THEN** enthält `artifacts` nur `proposal`
+### Requirement: Changes are read with their artifacts
 
-### Requirement: Archivierte Changes werden aus changes/archive/ gelesen
-Unterordner in `openspec/changes/archive/` SHALL als archivierte Changes mit denselben Feldern wie aktive Changes gelesen werden, zusätzlich mit dem Datum aus dem Ordnernamen (`YYYY-MM-DD-<name>`).
+For each subdirectory in `openspec/changes/` (except `archive/`) that contains a `.openspec.yaml`, a `Change` object SHALL be created with `name`, `artifacts` (which of proposal/design/tasks are present), and metadata from `.openspec.yaml`.
 
-#### Scenario: Archivierter Change
-- **WHEN** `openspec/changes/archive/2026-03-10-my-feature/` existiert mit `.openspec.yaml`
-- **THEN** wird ein archiviertes Change-Objekt mit `archivedDate: '2026-03-10'` und `name: 'my-feature'` erstellt
+#### Scenario: Change with all artifacts
+- **WHEN** `openspec/changes/my-feature/` contains `.openspec.yaml`, `proposal.md`, `design.md`, `tasks.md`
+- **THEN** the Change object contains all three artifacts in `artifacts`
+
+#### Scenario: Change with missing design
+- **WHEN** `openspec/changes/my-feature/` contains only `.openspec.yaml` and `proposal.md`
+- **THEN** `artifacts` contains only `proposal`
+
+### Requirement: Archived changes are read from changes/archive/
+
+Subdirectories in `openspec/changes/archive/` SHALL be read as archived changes with the same fields as active changes, plus the date parsed from the directory name (`YYYY-MM-DD-<name>`).
+
+#### Scenario: Archived change
+- **WHEN** `openspec/changes/archive/2026-03-10-my-feature/` exists with `.openspec.yaml`
+- **THEN** an archived Change object is created with `archivedDate: '2026-03-10'` and `name: 'my-feature'`
 
 ### Requirement: title field from .openspec.yaml is read for changes
 

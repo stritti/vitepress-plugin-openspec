@@ -1,15 +1,16 @@
 ## Requirements
 
-### Requirement: Für jede Canonical Spec wird eine VitePress-Seite generiert
-Das Plugin SHALL für jede Canonical Spec aus `openspec/specs/<capability>/spec.md` eine Seite in `<outDir>/specs/<capability>/index.md` im VitePress-`srcDir` schreiben, mit einem H1-Titel (humanisierter Capability-Name) und dem originalen Spec-Inhalt darunter.
+### Requirement: A VitePress page is generated for each canonical spec
 
-#### Scenario: Spec-Seite wird generiert
-- **WHEN** das Plugin für eine Canonical Spec mit `name: 'nav-integration'` ausgeführt wird
-- **THEN** existiert `<srcDir>/<outDir>/specs/nav-integration/index.md` mit `# Nav Integration` als erstem Heading
+The plugin SHALL write a page to `<outDir>/specs/<capability>/index.md` in the VitePress `srcDir` for each canonical spec from `openspec/specs/<capability>/spec.md`, with an H1 heading (humanized capability name) and the original spec content below it.
 
-#### Scenario: Inhalt der Spec ist vollständig übernommen
-- **WHEN** die originale `spec.md` Requirements und Scenarios enthält
-- **THEN** enthält die generierte Seite denselben Inhalt vollständig
+#### Scenario: Spec page is generated
+- **WHEN** the plugin runs for a canonical spec with `name: 'nav-integration'`
+- **THEN** `<srcDir>/<outDir>/specs/nav-integration/index.md` exists with `# Nav Integration` as the first heading
+
+#### Scenario: Spec content is fully included
+- **WHEN** the original `spec.md` contains requirements and scenarios
+- **THEN** the generated page contains the same content in full
 
 ### Requirement: Generated spec page H1 heading uses humanized label
 
@@ -19,12 +20,13 @@ The `# Heading` on a generated spec page MUST use the humanized (Title Case) for
 - **WHEN** the plugin generates a page for spec `nav-integration`
 - **THEN** the first line of the generated page is `# Nav Integration`
 
-### Requirement: Eine Index-Seite für den Specs-Bereich wird generiert
-Das Plugin SHALL eine Übersichtsseite `<outDir>/specs/index.md` generieren, die alle Capabilities mit humanisiertem Name und Link auflistet.
+### Requirement: An index page for the specs section is generated
 
-#### Scenario: Specs-Index enthält alle Capabilities
-- **WHEN** drei Canonical Specs existieren
-- **THEN** enthält `specs/index.md` Links zu allen drei Capability-Seiten mit humanisierten Labels
+The plugin SHALL generate an overview page `<outDir>/specs/index.md` that lists all capabilities with humanized names and links.
+
+#### Scenario: Specs index contains all capabilities
+- **WHEN** three canonical specs exist
+- **THEN** `specs/index.md` contains links to all three capability pages with humanized labels
 
 ### Requirement: Generated spec page structure includes optional frontmatter
 
@@ -50,9 +52,10 @@ When no description can be extracted, the frontmatter block is omitted and the p
 - **WHEN** the plugin generates a page for a spec whose spec.md contains no `### Requirement:` heading
 - **THEN** the generated page begins directly with `# Nav Integration` (no frontmatter)
 
-### Requirement: Bereits existierende generierte Seiten werden überschrieben
-Das Plugin SHALL bestehende Dateien im `<outDir>/specs/`-Ordner ohne Fehlermeldung überschreiben.
+### Requirement: Existing generated pages are overwritten
 
-#### Scenario: Wiederholter Build
-- **WHEN** das Plugin zweimal hintereinander ausgeführt wird
-- **THEN** werden die Dateien beim zweiten Durchlauf überschrieben ohne Fehler
+The plugin SHALL overwrite existing files in the `<outDir>/specs/` folder without error.
+
+#### Scenario: Repeated build
+- **WHEN** the plugin runs twice in a row
+- **THEN** the files are overwritten on the second run without errors
