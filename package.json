@@ -1,6 +1,6 @@
 {
   "name": "@stritti/vitepress-plugin-openspec",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "A VitePress plugin that integrates OpenSpec documentation into your VitePress site",
   "keywords": [
     "openspec",
