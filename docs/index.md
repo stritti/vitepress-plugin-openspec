@@ -7,6 +7,9 @@ hero:
   tagline: Render your project's OpenSpec folder — specs, changes, and artifacts — as structured VitePress documentation pages with sidebar and nav integration.
   actions:
     - theme: brand
+      text: Get Started
+      link: /guide
+    - theme: alt
       text: View Docs
       link: /openspec/
     - theme: alt
