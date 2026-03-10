@@ -159,6 +159,61 @@ export function readOpenSpecFolder(dir: string): OpenSpecFolder {
 }
 
 // ---------------------------------------------------------------------------
+// Spec content transformations
+// ---------------------------------------------------------------------------
+
+function extractSpecDescription(content: string): string | undefined {
+  const reqMatch = content.match(/^### Requirement:[^\n]*\n+([\s\S]*?)(?=\n#{1,4} |\n*$)/m)
+  if (!reqMatch) return undefined
+  const para = reqMatch[1].trim()
+  if (!para) return undefined
+  const sentenceMatch = para.match(/^([^.?!]+[.?!])/)
+  if (!sentenceMatch) return undefined
+  let sentence = sentenceMatch[1].trim()
+  if (sentence.length > 160) {
+    const cut = sentence.lastIndexOf(' ', 160)
+    sentence = (cut > 0 ? sentence.slice(0, cut) : sentence.slice(0, 160)) + '…'
+  }
+  return sentence.replace(/"/g, '\\"')
+}
+
+function stripDeltaMarkers(content: string): string {
+  const stripped = content
+    .split('\n')
+    .filter((line) => !/^## (ADDED|MODIFIED|REMOVED) Requirements\s*$/.test(line))
+    .join('\n')
+  // Collapse consecutive blank lines to a single blank line
+  return stripped.replace(/\n{3,}/g, '\n\n')
+}
+
+function transformScenarios(content: string): string {
+  const lines = content.split('\n')
+  const result: string[] = []
+  let inScenario = false
+
+  for (const line of lines) {
+    const scenarioMatch = line.match(/^#### Scenario: (.+)$/)
+    const isHeading = /^#{1,6} /.test(line)
+
+    if (scenarioMatch) {
+      if (inScenario) result.push(':::')
+      result.push(`:::details ${scenarioMatch[1]}`)
+      inScenario = true
+    } else if (isHeading && inScenario) {
+      result.push(':::')
+      result.push('')
+      result.push(line)
+      inScenario = false
+    } else {
+      result.push(line)
+    }
+  }
+
+  if (inScenario) result.push(':::')
+  return result.join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // Page generators
 // ---------------------------------------------------------------------------
 
@@ -166,10 +221,18 @@ export function readOpenSpecFolder(dir: string): OpenSpecFolder {
  * Generates VitePress Markdown for a canonical capability spec page.
  */
 export function generateSpecPage(spec: CapabilitySpec): string {
+  const description = extractSpecDescription(spec.content)
+  const transformed = transformScenarios(stripDeltaMarkers(spec.content))
   const lines: string[] = []
+  if (description) {
+    lines.push('---')
+    lines.push(`description: "${description}"`)
+    lines.push('---')
+    lines.push('')
+  }
   lines.push(`# ${spec.title ?? humanizeLabel(spec.name)}`)
   lines.push('')
-  lines.push(spec.content.trimEnd())
+  lines.push(transformed.trimEnd())
   lines.push('')
   return lines.join('\n')
 }

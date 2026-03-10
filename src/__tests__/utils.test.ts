@@ -10,6 +10,7 @@ import {
   generateOpenSpecSidebar,
   openspecNav,
 } from '../utils.js'
+import type { CapabilitySpec } from '../types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE = path.join(__dirname, 'fixture/openspec')
@@ -74,11 +75,11 @@ describe('readOpenSpecFolder', () => {
 })
 
 describe('generateSpecPage', () => {
-  it('starts with the humanized capability name as H1', () => {
+  it('includes the humanized capability name as H1', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const spec = folder.specs.find((s) => s.name === 'auth-flow')!
     const page = generateSpecPage(spec)
-    expect(page).toMatch(/^# Auth Flow/)
+    expect(page).toContain('# Auth Flow')
   })
 
   it('includes the spec content', () => {
@@ -86,6 +87,128 @@ describe('generateSpecPage', () => {
     const spec = folder.specs.find((s) => s.name === 'auth-flow')!
     const page = generateSpecPage(spec)
     expect(page).toContain('User can log in')
+  })
+
+  it('includes description frontmatter when spec has a requirement', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).toMatch(/^---\ndescription:/)
+  })
+
+  it('strips delta section markers from output', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).not.toContain('## ADDED Requirements')
+    expect(page).not.toContain('## MODIFIED Requirements')
+  })
+
+  it('transforms scenarios into :::details containers', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).toContain(':::details Successful login')
+    expect(page).not.toContain('#### Scenario:')
+  })
+})
+
+describe('extractSpecDescription', () => {
+  // tested via generateSpecPage since it's module-private
+  it('extracts description from first requirement sentence', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const page = generateSpecPage(spec)
+    expect(page).toContain('description: "The system SHALL allow users to authenticate with email and password.')
+  })
+
+  it('omits frontmatter when spec has no requirement heading', () => {
+    const specWithoutReq: CapabilitySpec = {
+      name: 'no-req',
+      specPath: '',
+      content: 'Just some prose without any requirement heading.\n',
+    }
+    const page = generateSpecPage(specWithoutReq)
+    expect(page).not.toMatch(/^---/)
+    expect(page).toMatch(/^# No Req/)
+  })
+
+  it('truncates long sentences at word boundary', () => {
+    const longSentence = 'A'.repeat(100) + ' word ' + 'B'.repeat(100) + '.'
+    const spec: CapabilitySpec = {
+      name: 'long',
+      specPath: '',
+      content: `### Requirement: Long\n${longSentence}\n`,
+    }
+    const page = generateSpecPage(spec)
+    const descMatch = page.match(/description: "([^"]+)"/)
+    expect(descMatch).toBeTruthy()
+    expect(descMatch![1].length).toBeLessThanOrEqual(163) // 160 chars + '…'
+    expect(descMatch![1]).toMatch(/…$/)
+  })
+})
+
+describe('stripDeltaMarkers', () => {
+  it('removes ## ADDED Requirements heading', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'data-export')!
+    const page = generateSpecPage(spec)
+    expect(page).not.toContain('## ADDED Requirements')
+    expect(page).toContain('User can export data as CSV')
+  })
+
+  it('leaves plain specs unaffected', () => {
+    const plain: CapabilitySpec = {
+      name: 'plain',
+      specPath: '',
+      content: '### Requirement: Foo\nSome requirement text.\n',
+    }
+    const page = generateSpecPage(plain)
+    expect(page).toContain('### Requirement: Foo')
+  })
+})
+
+describe('transformScenarios', () => {
+  it('replaces #### Scenario: with :::details container', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'data-export')!
+    const page = generateSpecPage(spec)
+    expect(page).toContain(':::details Export triggered')
+    expect(page).not.toContain('#### Scenario:')
+  })
+
+  it('closes :::details at end of content', () => {
+    const spec: CapabilitySpec = {
+      name: 'test',
+      specPath: '',
+      content: '### Requirement: Foo\nText.\n\n#### Scenario: Bar\n- **WHEN** x\n- **THEN** y\n',
+    }
+    const page = generateSpecPage(spec)
+    expect(page).toContain(':::details Bar')
+    expect(page).toContain(':::')
+  })
+
+  it('handles back-to-back scenarios correctly', () => {
+    const spec: CapabilitySpec = {
+      name: 'test',
+      specPath: '',
+      content: '### Requirement: Foo\nText.\n\n#### Scenario: First\n- item\n\n#### Scenario: Second\n- item\n',
+    }
+    const page = generateSpecPage(spec)
+    const firstClose = page.indexOf(':::', page.indexOf(':::details First'))
+    const secondOpen = page.indexOf(':::details Second')
+    expect(firstClose).toBeLessThan(secondOpen)
+  })
+
+  it('passes through content without scenarios unchanged', () => {
+    const spec: CapabilitySpec = {
+      name: 'test',
+      specPath: '',
+      content: '### Requirement: Foo\nSome requirement text without scenarios.\n',
+    }
+    const page = generateSpecPage(spec)
+    expect(page).not.toContain(':::details')
+    expect(page).toContain('Some requirement text without scenarios.')
   })
 })
 
@@ -184,7 +307,7 @@ describe('humanizeLabel (via page generators)', () => {
   it('converts multi-word kebab-case to Title Case', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const spec = folder.specs.find((s) => s.name === 'data-export')!
-    expect(generateSpecPage(spec)).toMatch(/^# Data Export/)
+    expect(generateSpecPage(spec)).toContain('# Data Export')
   })
 
   it('capitalizes single-word names', () => {
@@ -197,7 +320,7 @@ describe('humanizeLabel (via page generators)', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const spec = folder.specs.find((s) => s.name === 'auth-flow')!
     // auth-flow → Auth Flow (no acronym hit, normal capitalization)
-    expect(generateSpecPage(spec)).toMatch(/^# Auth Flow/)
+    expect(generateSpecPage(spec)).toContain('# Auth Flow')
   })
 
   it('uses humanized labels as sidebar text for specs', () => {
