@@ -1,10 +1,14 @@
 import { defineConfig } from 'vitepress'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import openspec, { generateOpenSpecSidebar, openspecNav } from 'vitepress-plugin-openspec'
+import openspec, { generateOpenSpecPages, generateOpenSpecSidebar, openspecNav } from 'vitepress-plugin-openspec'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const specDir = path.resolve(__dirname, '../../openspec')
+
+// Generate pages before VitePress scans srcDir for routes.
+// This ensures pages exist on first build and in CI environments.
+generateOpenSpecPages({ specDir, outDir: 'openspec', srcDir: path.resolve(__dirname, '..') })
 
 export default defineConfig({
   title: 'vitepress-plugin-openspec',

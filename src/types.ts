@@ -14,6 +14,16 @@ export interface OpenSpecPluginOptions {
    * @default 'openspec'
    */
   outDir?: string
+
+  /**
+   * VitePress source directory — the directory containing your `.md` files
+   * (i.e. the `docs/` folder). Required when calling `generateOpenSpecPages()`
+   * at config evaluation time so it knows where to write the generated files.
+   *
+   * @default process.cwd()
+   * @example path.resolve(__dirname, '..')  // from docs/.vitepress/config.ts
+   */
+  srcDir?: string
 }
 
 /**
