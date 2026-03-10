@@ -47,6 +47,11 @@ export interface Change {
   createdDate?: string
   /** For archived changes: the archive date (YYYY-MM-DD) parsed from directory name */
   archivedDate?: string
+  /**
+   * For archived changes: the original archive folder name (e.g. "2026-01-15-my-feature" or
+   * "legacy-feature" for non-standard names). Used to build correct archive URLs.
+   */
+  archiveFolderName?: string
 }
 
 /**

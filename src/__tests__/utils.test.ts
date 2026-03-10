@@ -53,9 +53,18 @@ describe('readOpenSpecFolder', () => {
 
   it('reads archived changes from openspec/changes/archive/', () => {
     const folder = readOpenSpecFolder(FIXTURE)
-    expect(folder.archivedChanges).toHaveLength(1)
-    expect(folder.archivedChanges[0]!.name).toBe('old-feature')
-    expect(folder.archivedChanges[0]!.archivedDate).toBe('2026-01-15')
+    expect(folder.archivedChanges).toHaveLength(2)
+    const standard = folder.archivedChanges.find((c) => c.name === 'old-feature')!
+    expect(standard.archivedDate).toBe('2026-01-15')
+    expect(standard.archiveFolderName).toBe('2026-01-15-old-feature')
+  })
+
+  it('reads non-standard archive folder names without date prefix', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const legacy = folder.archivedChanges.find((c) => c.name === 'legacy-feature')!
+    expect(legacy).toBeDefined()
+    expect(legacy.archivedDate).toBeUndefined()
+    expect(legacy.archiveFolderName).toBe('legacy-feature')
   })
 
   it('throws for non-existent directory', () => {
@@ -112,9 +121,17 @@ describe('generateChangeIndexPage', () => {
 
   it('includes archived path for archived changes', () => {
     const folder = readOpenSpecFolder(FIXTURE)
-    const change = folder.archivedChanges[0]!
+    const change = folder.archivedChanges.find((c) => c.name === 'old-feature')!
     const page = generateChangeIndexPage(change, 'openspec')
     expect(page).toContain('/openspec/changes/archive/2026-01-15-old-feature/proposal')
+  })
+
+  it('includes correct archive path for non-standard (undated) archive folder names', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.archivedChanges.find((c) => c.name === 'legacy-feature')!
+    const page = generateChangeIndexPage(change, 'openspec')
+    expect(page).toContain('/openspec/changes/archive/legacy-feature/proposal')
+    expect(page).not.toContain('undefined')
   })
 })
 
