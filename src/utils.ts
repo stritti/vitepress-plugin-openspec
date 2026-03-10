@@ -102,6 +102,7 @@ export function readOpenSpecFolder(dir: string): OpenSpecFolder {
         artifacts: readArtifacts(changeDir),
         createdDate: formatDate(meta.created),
         archivedDate,
+        archiveFolderName: entry.name,
       })
     }
   }
@@ -162,8 +163,8 @@ export function generateChangeIndexPage(change: Change, outDir: string): string 
   }
   lines.push('## Artifacts')
   lines.push('')
-  const prefix = change.archivedDate
-    ? `/${outDir}/changes/archive/${change.archivedDate}-${change.name}`
+  const prefix = change.archiveFolderName
+    ? `/${outDir}/changes/archive/${change.archiveFolderName}`
     : `/${outDir}/changes/${change.name}`
   for (const artifact of change.artifacts) {
     const label = artifact.charAt(0).toUpperCase() + artifact.slice(1)
@@ -199,7 +200,7 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
     for (const change of folder.archivedChanges) {
       const date = change.archivedDate ? ` *(archiviert: ${change.archivedDate})*` : ''
       lines.push(
-        `- [${change.name}](/${outDir}/changes/archive/${change.archivedDate}-${change.name}/)${date}`,
+        `- [${change.name}](/${outDir}/changes/archive/${change.archiveFolderName}/)${date}`,
       )
     }
   }
@@ -214,7 +215,7 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
 
 function changeItems(change: Change, outDir: string, isArchived = false): SidebarItem[] {
   const prefix = isArchived
-    ? `/${outDir}/changes/archive/${change.archivedDate}-${change.name}`
+    ? `/${outDir}/changes/archive/${change.archiveFolderName}`
     : `/${outDir}/changes/${change.name}`
   return change.artifacts.map((a) => ({
     text: a.charAt(0).toUpperCase() + a.slice(1),
