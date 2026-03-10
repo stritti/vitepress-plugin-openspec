@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
-import type { ParsedEndpoint, ParsedSpec } from './types.js'
+import type { NavItem, ParsedEndpoint, ParsedSpec, SidebarItem } from './types.js'
 
 /**
  * Reads and parses an OpenAPI spec file (JSON or YAML).
@@ -105,6 +105,66 @@ export function parseSpec(spec: Record<string, unknown>): ParsedSpec {
 }
 
 /**
+ * Groups endpoints by their first tag and returns VitePress sidebar groups
+ * sorted alphabetically. Untagged endpoints are collected under "Other".
+ */
+export function groupEndpointsByTag(endpoints: ParsedEndpoint[], outDir: string): SidebarItem[] {
+  const tagMap = new Map<string, ParsedEndpoint[]>()
+  const untagged: ParsedEndpoint[] = []
+
+  for (const endpoint of endpoints) {
+    if (endpoint.tags.length === 0) {
+      untagged.push(endpoint)
+    } else {
+      const tag = endpoint.tags[0]!
+      if (!tagMap.has(tag)) tagMap.set(tag, [])
+      tagMap.get(tag)!.push(endpoint)
+    }
+  }
+
+  const groups: SidebarItem[] = [...tagMap.keys()].sort().map((tag) => ({
+    text: tag,
+    collapsed: false,
+    items: tagMap.get(tag)!.map((e) => ({
+      text: `${e.method} ${e.path}`,
+      link: `/${outDir}/${e.slug}`,
+    })),
+  }))
+
+  if (untagged.length > 0) {
+    groups.push({
+      text: 'Other',
+      collapsed: false,
+      items: untagged.map((e) => ({
+        text: `${e.method} ${e.path}`,
+        link: `/${outDir}/${e.slug}`,
+      })),
+    })
+  }
+
+  return groups
+}
+
+/**
+ * Returns a VitePress nav entry pointing to the generated API section.
+ * Reads the spec's `info.title` as the default nav label.
+ * Throws with a descriptive message if the spec file is not found.
+ */
+export function openspecNav(options: {
+  spec: string
+  outDir?: string
+  text?: string
+}): NavItem {
+  const outDir = options.outDir ?? 'api'
+  const raw = loadSpecFile(options.spec)
+  const parsed = parseSpec(raw)
+  return {
+    text: options.text ?? parsed.title,
+    link: `/${outDir}/`,
+  }
+}
+
+/**
  * Generates the Markdown content for an individual endpoint page.
  */
 export function generateEndpointMarkdown(
@@ -184,7 +244,14 @@ export function generateIndexMarkdown(parsed: ParsedSpec, outDir: string): strin
   lines.push('| Method | Path | Summary |')
   lines.push('| --- | --- | --- |')
 
-  for (const endpoint of parsed.endpoints) {
+  const sorted = [...parsed.endpoints].sort((a, b) => {
+    const tagA = a.tags[0] ?? 'Other'
+    const tagB = b.tags[0] ?? 'Other'
+    if (tagA !== tagB) return tagA.localeCompare(tagB)
+    return a.path.localeCompare(b.path)
+  })
+
+  for (const endpoint of sorted) {
     const link = `[${endpoint.path}](${outDir}/${endpoint.slug})`
     const summary = endpoint.summary ?? ''
     lines.push(`| \`${endpoint.method}\` | ${link} | ${summary} |`)

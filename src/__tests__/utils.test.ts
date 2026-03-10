@@ -8,6 +8,8 @@ import {
   extractEndpoints,
   generateEndpointMarkdown,
   generateIndexMarkdown,
+  groupEndpointsByTag,
+  openspecNav,
 } from '../utils.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -141,6 +143,63 @@ describe('generateIndexMarkdown', () => {
       expect(md).toContain(endpoint.path)
     }
   })
+
+  it('table has Method | Path | Summary header', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const parsed = parseSpec(spec)
+    const md = generateIndexMarkdown(parsed, 'api')
+    expect(md).toContain('| Method | Path | Summary |')
+  })
+
+  it('table rows are sorted by tag then path alphabetically', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const parsed = parseSpec(spec)
+    const md = generateIndexMarkdown(parsed, 'api')
+    const lines = md.split('\n')
+    const tableRows = lines.filter((l) => l.startsWith('| `'))
+    // "plugins" tag comes before "specs" alphabetically
+    const pluginsIdx = tableRows.findIndex((r) => r.includes('/plugins'))
+    const specsIdx = tableRows.findIndex((r) => r.includes('/specs'))
+    expect(pluginsIdx).toBeLessThan(specsIdx)
+  })
+})
+
+describe('groupEndpointsByTag', () => {
+  it('groups endpoints by first tag, sorted alphabetically', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const endpoints = extractEndpoints(spec)
+    const groups = groupEndpointsByTag(endpoints, 'api')
+    const tagNames = groups.map((g) => g.text)
+    expect(tagNames[0]).toBe('plugins')
+    expect(tagNames[1]).toBe('specs')
+    expect(tagNames[tagNames.length - 1]).toBe('Other')
+  })
+
+  it('all groups have collapsed: false', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const endpoints = extractEndpoints(spec)
+    const groups = groupEndpointsByTag(endpoints, 'api')
+    for (const group of groups) {
+      expect(group.collapsed).toBe(false)
+    }
+  })
+
+  it('untagged endpoints appear in Other group', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const endpoints = extractEndpoints(spec)
+    const groups = groupEndpointsByTag(endpoints, 'api')
+    const other = groups.find((g) => g.text === 'Other')
+    expect(other).toBeDefined()
+    expect(other!.items!.some((i) => i.link?.includes('untagged'))).toBe(true)
+  })
+
+  it('child item links include the outDir prefix', () => {
+    const spec = loadSpecFile(SAMPLE_YAML)
+    const endpoints = extractEndpoints(spec)
+    const groups = groupEndpointsByTag(endpoints, 'myapi')
+    const allLinks = groups.flatMap((g) => g.items ?? []).map((i) => i.link)
+    expect(allLinks.every((l) => l?.startsWith('/myapi/'))).toBe(true)
+  })
 })
 
 import { generateSidebarFromSpec } from '../plugin.js'
@@ -152,16 +211,42 @@ describe('generateSidebarFromSpec', () => {
     expect(sidebar[0]!.text).toBe('Sample OpenSpec API')
   })
 
-  it('groups by tags when groupByTags is true', () => {
+  it('groups by tags when groupByTags is true, sorted alphabetically', () => {
     const sidebar = generateSidebarFromSpec(SAMPLE_YAML, { outDir: 'api', groupByTags: true })
     const items = sidebar[0]!.items!
     const tagNames = items.map((i) => i.text)
     expect(tagNames).toContain('specs')
     expect(tagNames).toContain('plugins')
+    expect(tagNames.indexOf('plugins')).toBeLessThan(tagNames.indexOf('specs'))
   })
 
   it('returns an empty array for a missing file without throwing', () => {
     const sidebar = generateSidebarFromSpec('/non/existent/spec.yaml')
     expect(sidebar).toEqual([])
+  })
+})
+
+describe('openspecNav', () => {
+  it('returns nav entry with spec title as default text', () => {
+    const nav = openspecNav({ spec: SAMPLE_YAML, outDir: 'api' })
+    expect(nav.text).toBe('Sample OpenSpec API')
+    expect(nav.link).toBe('/api/')
+  })
+
+  it('uses custom text when provided', () => {
+    const nav = openspecNav({ spec: SAMPLE_YAML, outDir: 'api', text: 'My Docs' })
+    expect(nav.text).toBe('My Docs')
+    expect(nav.link).toBe('/api/')
+  })
+
+  it('defaults outDir to "api" when not specified', () => {
+    const nav = openspecNav({ spec: SAMPLE_YAML })
+    expect(nav.link).toBe('/api/')
+  })
+
+  it('throws a descriptive error for a missing spec file', () => {
+    expect(() => openspecNav({ spec: '/non/existent/spec.yaml' })).toThrow(
+      'vitepress-plugin-openspec',
+    )
   })
 })
