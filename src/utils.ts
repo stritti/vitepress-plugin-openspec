@@ -24,6 +24,14 @@ function readOpenSpecYaml(dir: string): Record<string, unknown> {
   }
 }
 
+function humanizeLabel(name: string): string {
+  if (!name) return ''
+  return name
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 function formatDate(val: unknown): string | undefined {
   if (!val) return undefined
   if (val instanceof Date) return val.toISOString().slice(0, 10)
@@ -119,7 +127,7 @@ export function readOpenSpecFolder(dir: string): OpenSpecFolder {
  */
 export function generateSpecPage(spec: CapabilitySpec): string {
   const lines: string[] = []
-  lines.push(`# ${spec.name}`)
+  lines.push(`# ${humanizeLabel(spec.name)}`)
   lines.push('')
   lines.push(spec.content.trimEnd())
   lines.push('')
@@ -139,7 +147,7 @@ export function generateSpecsIndexPage(specs: CapabilitySpec[], outDir: string):
     lines.push('*No specifications defined yet.*')
   } else {
     for (const spec of specs) {
-      lines.push(`- [${spec.name}](/${outDir}/specs/${spec.name}/)`)
+      lines.push(`- [${humanizeLabel(spec.name)}](/${outDir}/specs/${spec.name}/)`)
     }
   }
   lines.push('')
@@ -151,7 +159,7 @@ export function generateSpecsIndexPage(specs: CapabilitySpec[], outDir: string):
  */
 export function generateChangeIndexPage(change: Change, outDir: string): string {
   const lines: string[] = []
-  lines.push(`# ${change.name}`)
+  lines.push(`# ${humanizeLabel(change.name)}`)
   lines.push('')
   if (change.createdDate) {
     lines.push(`**Created:** ${change.createdDate}`)
@@ -189,7 +197,7 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
     lines.push('')
     for (const change of folder.changes) {
       const date = change.createdDate ? ` *(${change.createdDate})*` : ''
-      lines.push(`- [${change.name}](/${outDir}/changes/${change.name}/)${date}`)
+      lines.push(`- [${humanizeLabel(change.name)}](/${outDir}/changes/${change.name}/)${date}`)
     }
   }
 
@@ -200,7 +208,7 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
     for (const change of folder.archivedChanges) {
       const date = change.archivedDate ? ` *(archiviert: ${change.archivedDate})*` : ''
       lines.push(
-        `- [${change.name}](/${outDir}/changes/archive/${change.archiveFolderName}/)${date}`,
+        `- [${humanizeLabel(change.name)}](/${outDir}/changes/archive/${change.archiveFolderName}/)${date}`,
       )
     }
   }
@@ -241,7 +249,7 @@ export function generateOpenSpecSidebar(
     collapsed: false,
     items: [
       { text: 'Overview', link: `/${outDir}/specs/` },
-      ...folder.specs.map((s) => ({ text: s.name, link: `/${outDir}/specs/${s.name}/` })),
+      ...folder.specs.map((s) => ({ text: humanizeLabel(s.name), link: `/${outDir}/specs/${s.name}/` })),
     ],
   })
 
@@ -252,7 +260,7 @@ export function generateOpenSpecSidebar(
     items: [
       { text: 'Overview', link: `/${outDir}/changes/` },
       ...folder.changes.map((c) => ({
-        text: c.name,
+        text: humanizeLabel(c.name),
         collapsed: true,
         items: changeItems(c, outDir),
       })),
@@ -265,7 +273,7 @@ export function generateOpenSpecSidebar(
       text: 'Archiv',
       collapsed: true,
       items: folder.archivedChanges.map((c) => ({
-        text: c.name,
+        text: humanizeLabel(c.name),
         collapsed: true,
         items: changeItems(c, outDir, true),
       })),

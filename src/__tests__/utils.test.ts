@@ -73,11 +73,11 @@ describe('readOpenSpecFolder', () => {
 })
 
 describe('generateSpecPage', () => {
-  it('starts with the capability name as H1', () => {
+  it('starts with the humanized capability name as H1', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const spec = folder.specs.find((s) => s.name === 'auth-flow')!
     const page = generateSpecPage(spec)
-    expect(page).toMatch(/^# auth-flow/)
+    expect(page).toMatch(/^# Auth Flow/)
   })
 
   it('includes the spec content', () => {
@@ -103,11 +103,11 @@ describe('generateSpecsIndexPage', () => {
 })
 
 describe('generateChangeIndexPage', () => {
-  it('contains the change name as H1', () => {
+  it('contains the humanized change name as H1', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const change = folder.changes.find((c) => c.name === 'add-login')!
     const page = generateChangeIndexPage(change, 'openspec')
-    expect(page).toMatch(/^# add-login/)
+    expect(page).toMatch(/^# Add Login/)
   })
 
   it('includes links to present artifacts', () => {
@@ -143,11 +143,11 @@ describe('generateChangesIndexPage', () => {
     expect(page).toContain('/openspec/changes/fix-bug/')
   })
 
-  it('includes Archiv section with archived changes', () => {
+  it('includes Archiv section with archived changes using humanized labels', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const page = generateChangesIndexPage(folder, 'openspec')
     expect(page).toContain('## Archiv')
-    expect(page).toContain('old-feature')
+    expect(page).toContain('Old Feature')
   })
 })
 
@@ -176,6 +176,36 @@ describe('generateOpenSpecSidebar', () => {
     const specs = sidebar.find((g) => g.text === 'Specifications')!
     const links = specs.items!.map((i) => i.link)
     expect(links).toContain('/openspec/specs/auth-flow/')
+  })
+})
+
+describe('humanizeLabel (via page generators)', () => {
+  it('converts multi-word kebab-case to Title Case', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const spec = folder.specs.find((s) => s.name === 'data-export')!
+    expect(generateSpecPage(spec)).toMatch(/^# Data Export/)
+  })
+
+  it('capitalizes single-word names', () => {
+    const folder = readOpenSpecFolder(FIXTURE)
+    const change = folder.changes.find((c) => c.name === 'fix-bug')!
+    expect(generateChangeIndexPage(change, 'openspec')).toMatch(/^# Fix Bug/)
+  })
+
+  it('uses humanized labels as sidebar text for specs', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const specsGroup = sidebar.find((g) => g.text === 'Specifications')!
+    const labels = specsGroup.items!.map((i) => i.text)
+    expect(labels).toContain('Auth Flow')
+    expect(labels).toContain('Data Export')
+  })
+
+  it('uses humanized labels as sidebar text for changes', () => {
+    const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
+    const changesGroup = sidebar.find((g) => g.text === 'Changes')!
+    const labels = changesGroup.items!.map((i) => i.text)
+    expect(labels).toContain('Add Login')
+    expect(labels).toContain('Fix Bug')
   })
 })
 
