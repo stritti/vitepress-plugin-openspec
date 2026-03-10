@@ -88,6 +88,14 @@ export interface ParsedSpec {
 }
 
 /**
+ * A nav item compatible with VitePress `DefaultTheme.NavItem`.
+ */
+export interface NavItem {
+  text: string
+  link: string
+}
+
+/**
  * A sidebar item compatible with VitePress `DefaultTheme.SidebarItem`.
  */
 export interface SidebarItem {

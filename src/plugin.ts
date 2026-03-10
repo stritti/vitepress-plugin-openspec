@@ -6,6 +6,7 @@ import type { OpenSpecPluginOptions, ParsedSpec, SidebarItem } from './types.js'
 import {
   generateEndpointMarkdown,
   generateIndexMarkdown,
+  groupEndpointsByTag,
   loadSpecFile,
   parseSpec,
 } from './utils.js'
@@ -20,34 +21,8 @@ function buildSidebar(
   outDir: string,
   groupByTags: boolean,
 ): SidebarItem[] {
-  if (groupByTags && parsed.tags.length > 0) {
-    const groups: SidebarItem[] = []
-
-    for (const tag of parsed.tags) {
-      const tagEndpoints = parsed.endpoints.filter((e) => e.tags.includes(tag))
-      groups.push({
-        text: tag,
-        collapsed: false,
-        items: tagEndpoints.map((e) => ({
-          text: `${e.method} ${e.path}`,
-          link: `/${outDir}/${e.slug}`,
-        })),
-      })
-    }
-
-    const untagged = parsed.endpoints.filter((e) => e.tags.length === 0)
-    if (untagged.length > 0) {
-      groups.push({
-        text: 'Other',
-        collapsed: false,
-        items: untagged.map((e) => ({
-          text: `${e.method} ${e.path}`,
-          link: `/${outDir}/${e.slug}`,
-        })),
-      })
-    }
-
-    return groups
+  if (groupByTags) {
+    return groupEndpointsByTag(parsed.endpoints, outDir)
   }
 
   return parsed.endpoints.map((e) => ({
