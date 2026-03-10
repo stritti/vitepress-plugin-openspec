@@ -1,4 +1,4 @@
-# vitepress-plugin-openspec
+# @stritti/vitepress-plugin-openspec
 
 A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSpec](https://openspec.dev/) folder as structured documentation pages — specs, changes, and artifacts — with sidebar and nav integration.
 
@@ -6,9 +6,18 @@ A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSp
 
 ## Installation
 
+The package is published to [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec).
+
 ```bash
-bun add vitepress-plugin-openspec
-# or: npm install vitepress-plugin-openspec
+bun add @stritti/vitepress-plugin-openspec
+# or: npm install @stritti/vitepress-plugin-openspec
+```
+
+For GitHub Packages you need an `.npmrc` in your project (or `~/.npmrc`) with a [personal access token](https://github.com/settings/tokens) that has `read:packages` scope:
+
+```
+@stritti:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
 ---
@@ -25,7 +34,7 @@ import openspec, {
   generateOpenSpecPages,
   generateOpenSpecSidebar,
   openspecNav,
-} from 'vitepress-plugin-openspec'
+} from '@stritti/vitepress-plugin-openspec'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const specDir = path.resolve(__dirname, '../openspec') // path to your openspec/ folder
