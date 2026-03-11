@@ -2,6 +2,11 @@
 
 A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSpec](https://openspec.dev/) folder as structured documentation pages — specs, changes, and artifacts — with sidebar and nav integration.
 
+[![npm version](https://img.shields.io/npm/v/@stritti/vitepress-plugin-openspec?style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@stritti/vitepress-plugin-openspec)
+[![npm downloads](https://img.shields.io/npm/dm/@stritti/vitepress-plugin-openspec?style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@stritti/vitepress-plugin-openspec)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/stritti/vitepress-plugin-openspec/blob/main/LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/stritti/vitepress-plugin-openspec/publish.yml?branch=main&style=flat-square&logo=github&label=release)](https://github.com/stritti/vitepress-plugin-openspec/actions/workflows/publish.yml)
+
 ---
 
 ## Installation
