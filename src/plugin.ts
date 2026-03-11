@@ -2,12 +2,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import pc from 'picocolors'
 import type { Plugin } from 'vite'
-import type { Change, OpenSpecPluginOptions } from './types.js'
+import type { Change, OpenSpecPluginOptions, WithOpenSpecOptions } from './types.js'
 import {
   generateChangeIndexPage,
   generateChangesIndexPage,
+  generateOpenSpecSidebar,
   generateSpecPage,
   generateSpecsIndexPage,
+  openspecNav,
   readOpenSpecFolder,
 } from './utils.js'
 
@@ -171,6 +173,76 @@ function writeChangePage(
     const destFile = path.join(changeOutDir, `${artifact}.md`)
     copyFile(srcFile, destFile)
   }
+}
+
+/**
+ * One-call VitePress config helper that wires up the full openspec integration.
+ *
+ * Calls `generateOpenSpecPages()` synchronously (required before VitePress scans
+ * for routes), then merges the openspec Vite plugin, nav entry, and sidebar section
+ * into the provided config object.
+ *
+ * Other Vite plugins go into `vite.plugins` as usual — `withOpenSpec` appends to
+ * the array without replacing it:
+ *
+ * @example
+ * ```typescript
+ * // docs/.vitepress/config.ts
+ * import { defineConfig } from 'vitepress'
+ * import { withOpenSpec } from 'vitepress-plugin-openspec'
+ *
+ * export default defineConfig(
+ *   withOpenSpec({
+ *     vite: { plugins: [myOtherPlugin()] }, // other plugins are preserved
+ *     themeConfig: { nav: [], sidebar: {} },
+ *   })
+ * )
+ * ```
+ *
+ * @param config - Your VitePress `UserConfig` object (same as what `defineConfig` accepts).
+ * @param options - OpenSpec options. All fields are optional; defaults match `generateOpenSpecPages`.
+ */
+export function withOpenSpec<T extends Record<string, unknown>>(
+  config: T,
+  options: WithOpenSpecOptions = {},
+): T {
+  const specDir = options.specDir ?? './openspec'
+  const outDir = options.outDir ?? 'openspec'
+  const srcDir = options.srcDir ?? process.cwd()
+
+  generateOpenSpecPages({ specDir, outDir, srcDir })
+
+  const result = { ...config } as Record<string, unknown>
+
+  // --- Vite plugin ---
+  const vite = (result.vite ?? {}) as Record<string, unknown>
+  const existingPlugins = (vite.plugins as unknown[]) ?? []
+  result.vite = { ...vite, plugins: [...existingPlugins, openspec({ specDir, outDir, srcDir })] }
+
+  const themeConfig = (result.themeConfig ?? {}) as Record<string, unknown>
+
+  // --- Nav ---
+  if (options.nav !== false) {
+    const navEntry = openspecNav(specDir, { outDir })
+    const existingNav = (themeConfig.nav as unknown[]) ?? []
+    themeConfig.nav = [navEntry, ...existingNav]
+  }
+
+  // --- Sidebar ---
+  if (options.sidebar !== false && !Array.isArray(themeConfig.sidebar)) {
+    const sidebarKey = `/${outDir}/`
+    const existingSidebar = (themeConfig.sidebar ?? {}) as Record<string, unknown>
+    if (!existingSidebar[sidebarKey]) {
+      themeConfig.sidebar = {
+        ...existingSidebar,
+        [sidebarKey]: generateOpenSpecSidebar(specDir, { outDir }),
+      }
+    }
+  }
+
+  result.themeConfig = themeConfig
+
+  return result as T
 }
 
 export default openspec

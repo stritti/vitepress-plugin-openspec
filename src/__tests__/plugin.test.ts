@@ -3,7 +3,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { generateOpenSpecPages } from '../plugin.js'
+import { generateOpenSpecPages, withOpenSpec } from '../plugin.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE = path.join(__dirname, 'fixture/openspec')
@@ -62,5 +62,82 @@ describe('generateOpenSpecPages', () => {
     const content = fs.readFileSync(gitignorePath, 'utf-8')
     expect(content).not.toContain('stale content')
     expect(content).toContain('!.gitignore')
+  })
+})
+
+describe('withOpenSpec', () => {
+  let tmpDir: string
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true })
+    }
+  })
+
+  it('returns config with openspec Vite plugin added', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const result = withOpenSpec({}, { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir }) as Record<string, unknown>
+    const plugins = (result.vite as { plugins: { name: string }[] }).plugins
+    expect(plugins.some((p) => p.name === 'vitepress-plugin-openspec')).toBe(true)
+  })
+
+  it('calls generateOpenSpecPages (output files exist)', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    withOpenSpec({} as Record<string, unknown>, { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir })
+    expect(fs.existsSync(path.join(tmpDir, 'docs', 'index.md'))).toBe(true)
+  })
+
+  it('prepends nav entry when themeConfig.nav exists', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const result = withOpenSpec(
+      { themeConfig: { nav: [{ text: 'Home', link: '/' }] } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir },
+    )
+    const nav = (result.themeConfig as { nav: { text: string }[] }).nav
+    expect(nav[0].text).not.toBe('Home')
+    expect(nav[1]).toEqual({ text: 'Home', link: '/' })
+  })
+
+  it('injects sidebar under the correct key', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const result = withOpenSpec(
+      { themeConfig: { sidebar: {} } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir },
+    )
+    const sidebar = (result.themeConfig as { sidebar: Record<string, unknown> }).sidebar
+    expect(sidebar['/docs/']).toBeDefined()
+  })
+
+  it('skips nav injection when nav: false', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const result = withOpenSpec(
+      { themeConfig: { nav: [{ text: 'Home', link: '/' }] } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir, nav: false },
+    )
+    const nav = (result.themeConfig as { nav: { text: string }[] }).nav
+    expect(nav).toHaveLength(1)
+    expect(nav[0]).toEqual({ text: 'Home', link: '/' })
+  })
+
+  it('skips sidebar injection when sidebar: false', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const result = withOpenSpec(
+      { themeConfig: { sidebar: {} } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir, sidebar: false },
+    )
+    const sidebar = (result.themeConfig as { sidebar: Record<string, unknown> }).sidebar
+    expect(Object.keys(sidebar)).toHaveLength(0)
+  })
+
+  it('preserves existing Vite plugins', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const myPlugin = { name: 'my-plugin' }
+    const result = withOpenSpec(
+      { vite: { plugins: [myPlugin] } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir },
+    )
+    const plugins = (result.vite as { plugins: { name: string }[] }).plugins
+    expect(plugins.some((p) => p.name === 'my-plugin')).toBe(true)
+    expect(plugins.some((p) => p.name === 'vitepress-plugin-openspec')).toBe(true)
   })
 })

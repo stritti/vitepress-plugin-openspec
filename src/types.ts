@@ -1,4 +1,22 @@
 /**
+ * Options for the `withOpenSpec()` config helper.
+ * Extends `OpenSpecPluginOptions` with optional nav/sidebar merge controls.
+ */
+export interface WithOpenSpecOptions extends OpenSpecPluginOptions {
+  /**
+   * Whether to prepend an openspec nav entry to `themeConfig.nav`.
+   * @default true
+   */
+  nav?: boolean
+
+  /**
+   * Whether to inject the openspec sidebar section into `themeConfig.sidebar`.
+   * @default true
+   */
+  sidebar?: boolean
+}
+
+/**
  * Configuration options for the vitepress-plugin-openspec plugin.
  */
 export interface OpenSpecPluginOptions {
