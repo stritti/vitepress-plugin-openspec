@@ -5,15 +5,9 @@
 Install the plugin from npm:
 
 ```bash
+npm install @stritti/vitepress-plugin-openspec
+# or with bun:
 bun add @stritti/vitepress-plugin-openspec
-# or: npm install @stritti/vitepress-plugin-openspec
-```
-
-The package is also available from [GitHub Packages](https://github.com/stritti/vitepress-plugin-openspec/pkgs/npm/vitepress-plugin-openspec). To install from there, add an `.npmrc` in your project root:
-
-```
-@stritti:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
 ```
 
 ---
