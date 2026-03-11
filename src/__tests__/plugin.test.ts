@@ -42,4 +42,25 @@ describe('generateOpenSpecPages', () => {
     const content = fs.readFileSync(path.join(tmpDir, 'docs', 'index.md'), 'utf-8')
     expect(content).toContain('openspec.dev')
   })
+
+  it('writes .gitignore into the output directory', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir })
+    const gitignorePath = path.join(tmpDir, 'docs', '.gitignore')
+    expect(fs.existsSync(gitignorePath)).toBe(true)
+    const content = fs.readFileSync(gitignorePath, 'utf-8')
+    expect(content).toContain('*')
+    expect(content).toContain('!.gitignore')
+  })
+
+  it('overwrites an existing .gitignore on re-run (idempotent)', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir })
+    const gitignorePath = path.join(tmpDir, 'docs', '.gitignore')
+    fs.writeFileSync(gitignorePath, 'stale content', 'utf-8')
+    generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir })
+    const content = fs.readFileSync(gitignorePath, 'utf-8')
+    expect(content).not.toContain('stale content')
+    expect(content).toContain('!.gitignore')
+  })
 })
