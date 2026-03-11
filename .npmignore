@@ -1,0 +1,41 @@
+# Source files (only dist/ is needed by consumers)
+src/
+
+# Documentation & demo site
+docs/
+openspec/
+
+# Tests
+**/*.test.ts
+**/*.spec.ts
+coverage/
+
+# Build tooling & config
+tsup.config.ts
+tsconfig.json
+*.tsbuildinfo
+
+# Dev dependencies lockfile
+bun.lock
+package-lock.json
+
+# CI/CD & GitHub config
+.github/
+
+# Agent & AI tooling config
+.agent/
+.claude/
+.gemini/
+.opencode/
+CLAUDE.md
+
+# Logs & temp files
+*.log
+*.tgz
+.cache/
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
