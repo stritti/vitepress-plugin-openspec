@@ -431,14 +431,16 @@ describe('title override', () => {
 describe('openspecNav', () => {
   it('returns nav entry with default text "Docs"', () => {
     const nav = openspecNav(FIXTURE)
-    expect(nav.text).toBe('Docs')
-    expect(nav.link).toBe('/openspec/')
+    expect(nav).not.toBeNull()
+    expect(nav!.text).toBe('Docs')
+    expect(nav!.link).toBe('/openspec/')
   })
 
   it('uses custom text and outDir', () => {
     const nav = openspecNav(FIXTURE, { outDir: 'project-docs', text: 'Projektdoku' })
-    expect(nav.text).toBe('Projektdoku')
-    expect(nav.link).toBe('/project-docs/')
+    expect(nav).not.toBeNull()
+    expect(nav!.text).toBe('Projektdoku')
+    expect(nav!.link).toBe('/project-docs/')
   })
 
   it('warns and returns null for non-existent directory', () => {
