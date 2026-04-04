@@ -56,6 +56,13 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
   const srcDir = userOptions.srcDir ?? process.cwd()
   const absoluteOutDir = path.resolve(srcDir, outDir)
 
+  if (!fs.existsSync(path.resolve(specDir))) {
+    console.warn(
+      `${pc.bold(pc.yellow(`[${PLUGIN_NAME}]`))} openspec directory not found: ${path.resolve(specDir)} — skipping page generation`,
+    )
+    return
+  }
+
   try {
     const folder = readOpenSpecFolder(specDir)
 

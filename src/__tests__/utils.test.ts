@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -301,6 +301,17 @@ describe('generateOpenSpecSidebar', () => {
     const links = specs.items!.map((i) => i.link)
     expect(links).toContain('/openspec/specs/auth-flow/')
   })
+
+  it('warns and returns empty array for non-existent directory', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const sidebar = generateOpenSpecSidebar('/non/existent')
+      expect(sidebar).toEqual([])
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('vitepress-plugin-openspec'))
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
 })
 
 describe('humanizeLabel (via page generators)', () => {
@@ -430,7 +441,15 @@ describe('openspecNav', () => {
     expect(nav.link).toBe('/project-docs/')
   })
 
-  it('throws for non-existent directory', () => {
-    expect(() => openspecNav('/non/existent')).toThrow('vitepress-plugin-openspec')
+  it('warns and returns default nav for non-existent directory', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const nav = openspecNav('/non/existent')
+      expect(nav.text).toBe('Docs')
+      expect(nav.link).toBe('/openspec/')
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('vitepress-plugin-openspec'))
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
