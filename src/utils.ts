@@ -344,7 +344,7 @@ export function generateOpenSpecSidebar(
 ): SidebarItem[] {
   const outDir = options.outDir ?? 'openspec'
   if (!fs.existsSync(path.resolve(specDir))) {
-    console.warn(`[vitepress-plugin-openspec] openspec directory not found: ${path.resolve(specDir)} — skipping sidebar generation`)
+    console.warn(`[vitepress-plugin-openspec] openspec directory not found: ${path.relative(process.cwd(), path.resolve(specDir))} — skipping sidebar generation`)
     return []
   }
   const folder = readOpenSpecFolder(specDir)
@@ -399,7 +399,7 @@ export function openspecNav(
 ): NavItem {
   const outDir = options.outDir ?? 'openspec'
   if (!fs.existsSync(path.resolve(specDir))) {
-    console.warn(`[vitepress-plugin-openspec] openspec directory not found: ${path.resolve(specDir)} — skipping nav generation`)
+    console.warn(`[vitepress-plugin-openspec] openspec directory not found: ${path.relative(process.cwd(), path.resolve(specDir))} — skipping nav generation`)
   }
   return {
     text: options.text ?? 'Docs',

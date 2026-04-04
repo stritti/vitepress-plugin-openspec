@@ -58,7 +58,7 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
 
   if (!fs.existsSync(path.resolve(specDir))) {
     console.warn(
-      `${pc.bold(pc.yellow(`[${PLUGIN_NAME}]`))} openspec directory not found: ${path.resolve(specDir)} — skipping page generation`,
+      `${pc.bold(pc.yellow(`[${PLUGIN_NAME}]`))} openspec directory not found: ${path.relative(srcDir, path.resolve(specDir))} — skipping page generation`,
     )
     return
   }
