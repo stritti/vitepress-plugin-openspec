@@ -56,6 +56,13 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
   const srcDir = userOptions.srcDir ?? process.cwd()
   const absoluteOutDir = path.resolve(srcDir, outDir)
 
+  if (!fs.existsSync(path.resolve(specDir))) {
+    console.warn(
+      `${pc.bold(pc.yellow(`[${PLUGIN_NAME}]`))} openspec directory not found: ${path.relative(srcDir, path.resolve(specDir))} — skipping page generation`,
+    )
+    return
+  }
+
   try {
     const folder = readOpenSpecFolder(specDir)
 
@@ -225,7 +232,7 @@ export function withOpenSpec<T extends Record<string, unknown>>(
   if (options.nav !== false) {
     const navEntry = openspecNav(specDir, { outDir })
     const existingNav = (themeConfig.nav as unknown[]) ?? []
-    themeConfig.nav = [navEntry, ...existingNav]
+    themeConfig.nav = navEntry ? [navEntry, ...existingNav] : existingNav
   }
 
   // --- Sidebar ---

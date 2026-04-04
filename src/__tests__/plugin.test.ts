@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -62,6 +62,18 @@ describe('generateOpenSpecPages', () => {
     const content = fs.readFileSync(gitignorePath, 'utf-8')
     expect(content).not.toContain('stale content')
     expect(content).toContain('!.gitignore')
+  })
+
+  it('warns and writes no files when specDir does not exist', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      generateOpenSpecPages({ specDir: '/non/existent', outDir: 'docs', srcDir: tmpDir })
+      expect(fs.existsSync(path.join(tmpDir, 'docs'))).toBe(false)
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('vitepress-plugin-openspec'))
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
 
@@ -139,5 +151,21 @@ describe('withOpenSpec', () => {
     const plugins = (result.vite as { plugins: { name: string }[] }).plugins
     expect(plugins.some((p) => p.name === 'my-plugin')).toBe(true)
     expect(plugins.some((p) => p.name === 'vitepress-plugin-openspec')).toBe(true)
+  })
+
+  it('does not prepend nav entry when specDir is missing', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const result = withOpenSpec(
+        { themeConfig: { nav: [{ text: 'Home', link: '/' }] } },
+        { specDir: '/non/existent', outDir: 'docs', srcDir: tmpDir },
+      )
+      const nav = (result.themeConfig as { nav: { text: string }[] }).nav
+      expect(nav).toHaveLength(1)
+      expect(nav[0]).toEqual({ text: 'Home', link: '/' })
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
