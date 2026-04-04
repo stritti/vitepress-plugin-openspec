@@ -152,4 +152,20 @@ describe('withOpenSpec', () => {
     expect(plugins.some((p) => p.name === 'my-plugin')).toBe(true)
     expect(plugins.some((p) => p.name === 'vitepress-plugin-openspec')).toBe(true)
   })
+
+  it('does not prepend nav entry when specDir is missing', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const result = withOpenSpec(
+        { themeConfig: { nav: [{ text: 'Home', link: '/' }] } },
+        { specDir: '/non/existent', outDir: 'docs', srcDir: tmpDir },
+      )
+      const nav = (result.themeConfig as { nav: { text: string }[] }).nav
+      expect(nav).toHaveLength(1)
+      expect(nav[0]).toEqual({ text: 'Home', link: '/' })
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
 })

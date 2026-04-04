@@ -441,12 +441,11 @@ describe('openspecNav', () => {
     expect(nav.link).toBe('/project-docs/')
   })
 
-  it('warns and returns default nav for non-existent directory', () => {
+  it('warns and returns null for non-existent directory', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
       const nav = openspecNav('/non/existent')
-      expect(nav.text).toBe('Docs')
-      expect(nav.link).toBe('/openspec/')
+      expect(nav).toBeNull()
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('vitepress-plugin-openspec'))
     } finally {
       warnSpy.mockRestore()

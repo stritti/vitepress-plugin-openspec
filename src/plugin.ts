@@ -232,7 +232,7 @@ export function withOpenSpec<T extends Record<string, unknown>>(
   if (options.nav !== false) {
     const navEntry = openspecNav(specDir, { outDir })
     const existingNav = (themeConfig.nav as unknown[]) ?? []
-    themeConfig.nav = [navEntry, ...existingNav]
+    themeConfig.nav = navEntry ? [navEntry, ...existingNav] : existingNav
   }
 
   // --- Sidebar ---
