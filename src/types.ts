@@ -22,7 +22,20 @@ export interface WithOpenSpecOptions extends OpenSpecPluginOptions {
 export interface OpenSpecPluginOptions {
   /**
    * Path to the openspec/ directory of the project.
+   *
+   * Use an explicit path when your `openspec/` folder is not at the project root
+   * (e.g. when `config.ts` lives inside `docs/.vitepress/`).
+   *
+   * If the directory does not exist a warning is printed and the build continues
+   * without generating any pages or nav/sidebar entries — no error is thrown.
+   *
    * @default './openspec'
+   * @example
+   * // Resolving from docs/.vitepress/config.ts
+   * import path from 'node:path'
+   * import { fileURLToPath } from 'node:url'
+   * const __dirname = path.dirname(fileURLToPath(import.meta.url))
+   * const specDir = path.resolve(__dirname, '../../openspec')
    */
   specDir?: string
 

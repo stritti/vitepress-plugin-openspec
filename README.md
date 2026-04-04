@@ -64,11 +64,13 @@ export default defineConfig(
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specDir` | `string` | `'./openspec'` | Path to your project's `openspec/` directory |
+| `specDir` | `string` | `'./openspec'` | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
 | `outDir` | `string` | `'openspec'` | Output directory relative to VitePress `srcDir` |
 | `srcDir` | `string` | `process.cwd()` | VitePress source directory (the `docs/` folder) |
 | `nav` | `boolean` | `true` | Whether to prepend an openspec entry to `themeConfig.nav` |
 | `sidebar` | `boolean` | `true` | Whether to inject the openspec sidebar section into `themeConfig.sidebar` |
+
+> **Missing directory** — if `specDir` does not exist the plugin emits a `console.warn` and skips page generation, nav, and sidebar. No error is thrown and your VitePress build continues normally. This is intentional for projects that haven't set up an `openspec/` folder yet.
 
 ---
 
