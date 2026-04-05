@@ -321,6 +321,89 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
 }
 
 // ---------------------------------------------------------------------------
+// Artifact link rewriting
+// ---------------------------------------------------------------------------
+
+/**
+ * Rewrites relative markdown links in an artifact file's content so that they
+ * use absolute VitePress paths instead of paths relative to the original
+ * openspec source directory.
+ *
+ * When artifact files (proposal.md, design.md, tasks.md) are copied from the
+ * openspec source directory into the VitePress output directory, any relative
+ * links they contain that reference other files within the openspec directory
+ * must be rewritten to absolute VitePress paths — otherwise VitePress will
+ * report them as dead links.
+ *
+ * Links that point outside the openspec root, absolute paths, HTTP URLs, and
+ * anchor-only links are left unchanged.
+ *
+ * @param content - The markdown content of the artifact file.
+ * @param srcFilePath - The absolute path of the source artifact file.
+ * @param openspecRootDir - The absolute path of the openspec root directory.
+ * @param outDir - The VitePress output directory name (e.g. `"openspec"`).
+ * @returns The content with rewritten links.
+ */
+export function rewriteRelativeLinks(
+  content: string,
+  srcFilePath: string,
+  openspecRootDir: string,
+  outDir: string,
+): string {
+  const srcDir = path.dirname(srcFilePath)
+
+  return content.replace(
+    /(\[[^\]]*\])\(([^)]+)\)/g,
+    (_match, linkText: string, urlPart: string) => {
+      // Separate the URL from an optional quoted title: url "title" or url 'title'
+      const titleMatch = urlPart.match(/^(.+?)(\s+["'][^"']*["'])?\s*$/)
+      if (!titleMatch) return _match
+      const rawUrl = titleMatch[1].trim()
+      const title = titleMatch[2] ?? ''
+
+      // Leave non-relative URLs unchanged
+      if (
+        !rawUrl ||
+        rawUrl.startsWith('http://') ||
+        rawUrl.startsWith('https://') ||
+        rawUrl.startsWith('//') ||
+        rawUrl.startsWith('/') ||
+        rawUrl.startsWith('#') ||
+        rawUrl.startsWith('mailto:') ||
+        rawUrl.startsWith('tel:')
+      ) {
+        return _match
+      }
+
+      // Separate the path component from any trailing fragment (#anchor)
+      const hashIdx = rawUrl.indexOf('#')
+      const urlWithoutFragment = hashIdx >= 0 ? rawUrl.slice(0, hashIdx) : rawUrl
+      const fragment = hashIdx >= 0 ? rawUrl.slice(hashIdx) : ''
+
+      if (!urlWithoutFragment) {
+        // Pure anchor link — leave as-is
+        return _match
+      }
+
+      // Resolve the relative path against the source file's directory
+      const resolvedPath = path.resolve(srcDir, urlWithoutFragment)
+
+      // Only rewrite links that remain within the openspec root directory
+      const relToOpenspec = path.relative(openspecRootDir, resolvedPath)
+      if (relToOpenspec.startsWith('..') || path.isAbsolute(relToOpenspec)) {
+        return _match
+      }
+
+      // Build the absolute VitePress path, stripping any .md extension
+      const vitePath = relToOpenspec.replace(/\.md$/, '').replace(/\\/g, '/')
+      const absoluteLink = `/${outDir}/${vitePath}${fragment}`
+
+      return `${linkText}(${absoluteLink}${title})`
+    },
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Navigation helpers
 // ---------------------------------------------------------------------------
 
