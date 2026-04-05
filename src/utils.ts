@@ -396,7 +396,7 @@ export function rewriteRelativeLinks(
 
       // Build the absolute VitePress path, stripping any .md extension
       const vitePath = relToOpenspec.replace(/\.md$/, '').replace(/\\/g, '/')
-      const absoluteLink = `/${path.join(outDir, vitePath).replace(/\\/g, '/')}${fragment}`
+      const absoluteLink = `/${outDir}/${vitePath}${fragment}`
 
       return `${linkText}(${absoluteLink}${title})`
     },
