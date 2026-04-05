@@ -75,6 +75,24 @@ describe('generateOpenSpecPages', () => {
       warnSpy.mockRestore()
     }
   })
+
+  it('rewrites relative links in artifact files to absolute VitePress paths', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-test-'))
+    generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir })
+    // fix-bug/design.md has relative links; verify they are rewritten in the output
+    const destDesign = path.join(tmpDir, 'docs', 'changes', 'fix-bug', 'design.md')
+    expect(fs.existsSync(destDesign)).toBe(true)
+    const content = fs.readFileSync(destDesign, 'utf-8')
+    // Relative links to other changes should become absolute VitePress paths
+    expect(content).toContain('/docs/changes/add-login/proposal')
+    expect(content).not.toContain('../add-login/proposal.md')
+    // Relative links to specs should also be rewritten
+    expect(content).toContain('/docs/specs/auth-flow/spec')
+    expect(content).not.toContain('../../specs/auth-flow/spec.md')
+    // HTTP URLs and absolute paths must remain unchanged
+    expect(content).toContain('https://github.com')
+    expect(content).toContain('/docs/specs/')
+  })
 })
 
 describe('withOpenSpec', () => {

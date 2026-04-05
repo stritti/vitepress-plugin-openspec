@@ -9,6 +9,7 @@ import {
   generateChangesIndexPage,
   generateOpenSpecSidebar,
   openspecNav,
+  rewriteRelativeLinks,
 } from '../utils.js'
 import type { CapabilitySpec } from '../types.js'
 
@@ -452,5 +453,79 @@ describe('openspecNav', () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe('rewriteRelativeLinks', () => {
+  const openspecRoot = path.join(FIXTURE)
+  const srcFile = path.join(FIXTURE, 'changes', 'fix-bug', 'design.md')
+
+  it('rewrites a relative link to another change artifact to an absolute VitePress path', () => {
+    const content = 'See [proposal](../add-login/proposal.md) for details.'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toContain('[proposal](/openspec/changes/add-login/proposal)')
+    expect(result).not.toContain('../add-login/proposal.md')
+  })
+
+  it('rewrites a relative link to a spec to an absolute VitePress path', () => {
+    const content = 'See [auth spec](../../specs/auth-flow/spec.md).'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toContain('[auth spec](/openspec/specs/auth-flow/spec)')
+  })
+
+  it('strips .md extension from rewritten links', () => {
+    const content = '[design](../add-login/proposal.md)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toContain('/openspec/changes/add-login/proposal)')
+    expect(result).not.toContain('.md')
+  })
+
+  it('preserves fragment (#anchor) when rewriting', () => {
+    const content = '[section](../add-login/proposal.md#background)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toContain('/openspec/changes/add-login/proposal#background')
+  })
+
+  it('preserves a link title when rewriting', () => {
+    const content = '[spec](../../specs/data-export/spec.md "Data Export")'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toContain('/openspec/specs/data-export/spec')
+    expect(result).toContain('"Data Export"')
+  })
+
+  it('does not rewrite absolute paths starting with /', () => {
+    const content = '[Specs](/openspec/specs/)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toBe(content)
+  })
+
+  it('does not rewrite HTTP URLs', () => {
+    const content = '[GitHub](https://github.com)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toBe(content)
+  })
+
+  it('does not rewrite fragment-only links', () => {
+    const content = '[section](#heading)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toBe(content)
+  })
+
+  it('does not rewrite links pointing outside the openspec root', () => {
+    const content = '[readme](../../../README.md)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toBe(content)
+  })
+
+  it('uses the provided outDir in the rewritten path', () => {
+    const content = '[proposal](../add-login/proposal.md)'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'project-docs')
+    expect(result).toContain('/project-docs/changes/add-login/proposal')
+  })
+
+  it('returns unchanged content when there are no relative links', () => {
+    const content = '## Tasks\n\n- [ ] Implement feature\n- [ ] Write tests\n'
+    const result = rewriteRelativeLinks(content, srcFile, openspecRoot, 'openspec')
+    expect(result).toBe(content)
   })
 })

@@ -11,6 +11,7 @@ import {
   generateSpecsIndexPage,
   openspecNav,
   readOpenSpecFolder,
+  rewriteRelativeLinks,
 } from './utils.js'
 
 const PLUGIN_NAME = 'vitepress-plugin-openspec'
@@ -18,11 +19,6 @@ const PLUGIN_NAME = 'vitepress-plugin-openspec'
 function writeFile(filePath: string, content: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(filePath, content, 'utf-8')
-}
-
-function copyFile(src: string, dest: string): void {
-  fs.mkdirSync(path.dirname(dest), { recursive: true })
-  fs.copyFileSync(src, dest)
 }
 
 /**
@@ -78,12 +74,12 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
 
     // --- Active change pages ---
     for (const change of folder.changes) {
-      writeChangePage(change, absoluteOutDir, outDir, false)
+      writeChangePage(change, absoluteOutDir, outDir, false, folder.dir)
     }
 
     // --- Archived change pages ---
     for (const change of folder.archivedChanges) {
-      writeChangePage(change, absoluteOutDir, outDir, true)
+      writeChangePage(change, absoluteOutDir, outDir, true, folder.dir)
     }
 
     // --- Changes index ---
@@ -165,6 +161,7 @@ function writeChangePage(
   absoluteOutDir: string,
   outDir: string,
   isArchived: boolean,
+  openspecRootDir: string,
 ): void {
   const subPath = isArchived
     ? path.join('changes', 'archive', `${change.archivedDate}-${change.name}`)
@@ -174,11 +171,12 @@ function writeChangePage(
   // Write index page
   writeFile(path.join(changeOutDir, 'index.md'), generateChangeIndexPage(change, outDir))
 
-  // Copy artifact files
+  // Copy artifact files, rewriting relative links to absolute VitePress paths
   for (const artifact of change.artifacts) {
     const srcFile = path.join(change.dir, `${artifact}.md`)
     const destFile = path.join(changeOutDir, `${artifact}.md`)
-    copyFile(srcFile, destFile)
+    const content = fs.readFileSync(srcFile, 'utf-8')
+    writeFile(destFile, rewriteRelativeLinks(content, srcFile, openspecRootDir, outDir))
   }
 }
 
