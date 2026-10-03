@@ -45,21 +45,24 @@ function recordManifest(files: string[], rootDir: string): void {
       // Unreadable manifest: treat as empty and overwrite it below
     }
   }
-  try {
-    for (const stale of previous) {
-      if (files.includes(stale)) continue
-      const stalePath = path.resolve(rootDir, stale)
-      const rel = path.relative(rootDir, stalePath)
-      if (rel.startsWith('..') || path.isAbsolute(rel)) continue
+  const retained: string[] = []
+  for (const stale of previous) {
+    if (files.includes(stale)) continue
+    const stalePath = path.resolve(rootDir, stale)
+    const rel = path.relative(rootDir, stalePath)
+    if (rel.startsWith('..') || path.isAbsolute(rel)) continue
+    try {
       if (fs.existsSync(stalePath)) {
         fs.rmSync(stalePath)
         pruneEmptyDirs(rootDir, path.dirname(stalePath))
       }
+    } catch {
+      // Deletion failed (e.g. locked file): keep the entry so the next
+      // run retries it instead of forgetting the stale page forever.
+      retained.push(stale)
     }
-  } catch {
-    // Cleanup is best-effort; never fail generation because of it
   }
-  writeFile(manifestPath, JSON.stringify(files, null, 2))
+  writeFile(manifestPath, JSON.stringify([...files, ...retained], null, 2))
 }
 
 function writeChangePage(
@@ -68,7 +71,7 @@ function writeChangePage(
   isArchived: boolean,
 ): string[] {
   const subPath = isArchived
-    ? path.join('changes', 'archive', `${change.archivedDate}-${change.name}`)
+    ? path.join('changes', 'archive', change.archiveFolderName ?? change.name)
     : path.join('changes', change.name)
   const changeOutDir = path.join(options.absoluteOutDir, subPath)
   const written: string[] = []
@@ -132,16 +135,7 @@ export function generatePages(options: ResolvedOptions): void {
 
     writeFile(path.join(options.absoluteOutDir, '.gitignore'), GITIGNORE_CONTENT)
 
-    // Never record generated files that live inside the openspec source
-    // directory itself (overlapping specDir/outDir) — stale cleanup must
-    // never be able to delete openspec source files.
-    const manifestFiles = written.filter((f) => {
-      const abs = path.resolve(options.absoluteOutDir, f)
-      const rel = path.relative(options.specDir, abs)
-      return rel.startsWith('..') || path.isAbsolute(rel)
-    })
-
-    recordManifest(manifestFiles, options.absoluteOutDir)
+    recordManifest(written, options.absoluteOutDir)
 
     logInfo(
       `Generated docs from ${options.specDir}: ` +

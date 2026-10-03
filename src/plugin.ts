@@ -7,6 +7,7 @@ import { PLUGIN_NAME, logWarn } from './lib/logger.js'
 import { resolveOptions } from './lib/options.js'
 import { generatePages } from './lib/generator.js'
 import { generateOpenSpecSidebar, openspecNav } from './lib/navigation.js'
+import { isSourceArtifactEvent } from './lib/watch.js'
 
 /**
  * Synchronously generates all VitePress Markdown pages from the openspec/
@@ -33,20 +34,8 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  */
 let regenerateTimer: ReturnType<typeof setTimeout> | undefined
 
-function onSourceChange(
-  options: ResolvedOptions,
-  server: ViteDevServer,
-  file: string,
-): void {
-  const absFile = path.resolve(file)
-  const relToSpec = path.relative(options.specDir, absFile)
-  if (relToSpec.startsWith('..') || path.isAbsolute(relToSpec)) return
-  // Ignore events for files inside the generated output directory to
-  // avoid watch loops when outDir is nested inside specDir.
-  const relToOut = path.relative(options.absoluteOutDir, absFile)
-  if (!(relToOut.startsWith('..') || path.isAbsolute(relToOut))) return
-  if (path.basename(absFile).startsWith('.')) return
-  // Debounce: editors often emit several events per save
+function scheduleRegeneration(options: ResolvedOptions, server: ViteDevServer): void {
+  // Debounce: editors and archive operations often emit event bursts
   if (regenerateTimer) clearTimeout(regenerateTimer)
   regenerateTimer = setTimeout(() => {
     regenerateTimer = undefined
@@ -57,7 +46,7 @@ function onSourceChange(
 
 export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
   let resolvedOptions: ResolvedOptions | undefined
-  let watcher: { close: () => void } | undefined
+  let watcher: { close: () => void; off?: (e: string, l: (f: string) => void) => void } | undefined
 
   return {
     name: PLUGIN_NAME,
@@ -88,13 +77,29 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
       const options = resolvedOptions
       // Use Vite's own watcher: it is supported on all Node versions and
       // platforms declared by this package (unlike recursive fs.watch).
-      watcher = server.watcher.on('change', (file: string) => {
-        onSourceChange(options, server, file)
-      })
+      // Ensure the openspec directory is watched even when it lives outside
+      // the Vite root (the documented docs/ + openspec/ layout).
+      server.watcher.add(options.specDir)
+      const onWatchEvent = (file: string) => {
+        const absFile = path.resolve(file)
+        if (!isSourceArtifactEvent(options, absFile)) return
+        scheduleRegeneration(options, server)
+      }
+      watcher = server.watcher.on('change', onWatchEvent)
+      server.watcher.on('add', onWatchEvent)
+      server.watcher.on('unlink', onWatchEvent)
+      // Unregister listeners when the dev server shuts down. Closing the
+      // shared chokidar instance would break Vite itself, so we only detach.
+      const detach = () => {
+        watcher?.off?.('change', onWatchEvent)
+        server.watcher.off('add', onWatchEvent)
+        server.watcher.off('unlink', onWatchEvent)
+        watcher = undefined
+      }
+      server.httpServer?.once('close', detach)
     },
 
     closeBundle() {
-      watcher?.close()
       watcher = undefined
     },
   }

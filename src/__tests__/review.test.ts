@@ -82,11 +82,12 @@ describe('overlapping specDir/outDir (review: source files must survive)', () =>
       generateOpenSpecPages({ specDir, outDir: 'openspec', srcDir: dir })
       const manifestPath = path.join(dir, 'openspec', '.openspec-manifest.json')
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as string[]
-      for (const entry of manifest) {
-        const abs = path.resolve(dir, 'openspec', entry)
-        const rel = path.relative(specDir, abs)
-        expect(rel.startsWith('..') || path.isAbsolute(rel)).toBe(true)
-      }
+      // Source artifacts are never recorded where they would be
+      // self-copies; only genuinely generated files are listed.
+      expect(manifest).not.toContain(path.join('changes', 'add-login', 'proposal.md'))
+      expect(manifest).not.toContain(path.join('changes', 'fix-bug', 'design.md'))
+      // Generated index pages ARE tracked so stale cleanup keeps working
+      expect(manifest).toContain(path.join('changes', 'add-login', 'index.md'))
       // Original change artifact survives even after the change is removed
       const proposal = path.join(specDir, 'changes', 'add-login', 'proposal.md')
       expect(fs.existsSync(proposal)).toBe(true)
@@ -97,7 +98,10 @@ describe('overlapping specDir/outDir (review: source files must survive)', () =>
       } finally {
         warnSpy.mockRestore()
       }
+      // Source artifact survives stale cleanup
       expect(fs.existsSync(proposal)).toBe(true)
+      // Its generated index page was cleaned up as stale
+      expect(fs.existsSync(path.join(specDir, 'changes', 'add-login', 'index.md'))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true })
     }
