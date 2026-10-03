@@ -33,4 +33,16 @@ describe('watch event filtering', () => {
     expect(isSourceArtifactEvent(overlapping, path.join(overlapping.absoluteOutDir, 'specs', 'auth', 'index.md'))).toBe(false)
     expect(isPluginGeneratedFile(overlapping, path.join(overlapping.absoluteOutDir, 'specs', 'auth', 'index.md'))).toBe(true)
   })
+
+  it('accepts artifact add/remove events under the overlapping layout', () => {
+    // Artifacts are only "generated" when the output tree is separate from
+    // the source tree; in the overlapping layout they are source files.
+    expect(isSourceArtifactEvent(overlapping, path.join(overlapping.specDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
+    expect(isPluginGeneratedFile(overlapping, path.join(overlapping.specDir, 'changes', 'add-login', 'proposal.md'))).toBe(false)
+  })
+
+  it('treats artifact copies as generated in the separate layout', () => {
+    expect(isPluginGeneratedFile(separate, path.join(separate.absoluteOutDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
+    expect(isSourceArtifactEvent(separate, path.join(separate.absoluteOutDir, 'changes', 'add-login', 'proposal.md'))).toBe(false)
+  })
 })

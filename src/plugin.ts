@@ -32,16 +32,25 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  * are generated once in `configResolved`. When using `withOpenSpec()` this
  * plugin is wired up automatically.
  */
-let regenerateTimer: ReturnType<typeof setTimeout> | undefined
-
-function scheduleRegeneration(options: ResolvedOptions, server: ViteDevServer): void {
-  // Debounce: editors and archive operations often emit event bursts
-  if (regenerateTimer) clearTimeout(regenerateTimer)
-  regenerateTimer = setTimeout(() => {
-    regenerateTimer = undefined
-    generatePages(options)
-    server.ws.send({ type: 'full-reload' })
-  }, 100)
+function createScheduler() {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return {
+    schedule(options: ResolvedOptions, server: ViteDevServer): void {
+      // Debounce: editors and archive operations often emit event bursts
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        timer = undefined
+        generatePages(options)
+        server.ws.send({ type: 'full-reload' })
+      }, 100)
+    },
+    cancel(): void {
+      if (timer) {
+        clearTimeout(timer)
+        timer = undefined
+      }
+    },
+  }
 }
 
 export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
@@ -80,20 +89,33 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
       // Ensure the openspec directory is watched even when it lives outside
       // the Vite root (the documented docs/ + openspec/ layout).
       server.watcher.add(options.specDir)
-      const onWatchEvent = (file: string) => {
+      const scheduler = createScheduler()
+      const onWatchEvent = (event: 'change' | 'add' | 'unlink', file: string) => {
         const absFile = path.resolve(file)
         if (!isSourceArtifactEvent(options, absFile)) return
-        scheduleRegeneration(options, server)
+        // Structural changes (files added or removed) also alter the
+        // sidebar, which is derived from the config; a full server
+        // restart regenerates both pages and navigation.
+        if (event === 'change') {
+          scheduler.schedule(options, server)
+        } else {
+          scheduler.cancel()
+          server.restart(true)
+        }
       }
-      watcher = server.watcher.on('change', onWatchEvent)
-      server.watcher.on('add', onWatchEvent)
-      server.watcher.on('unlink', onWatchEvent)
+      const onChange = (f: string) => onWatchEvent('change', f)
+      const onAdd = (f: string) => onWatchEvent('add', f)
+      const onUnlink = (f: string) => onWatchEvent('unlink', f)
+      watcher = server.watcher.on('change', onChange)
+      server.watcher.on('add', onAdd)
+      server.watcher.on('unlink', onUnlink)
       // Unregister listeners when the dev server shuts down. Closing the
       // shared chokidar instance would break Vite itself, so we only detach.
       const detach = () => {
-        watcher?.off?.('change', onWatchEvent)
-        server.watcher.off('add', onWatchEvent)
-        server.watcher.off('unlink', onWatchEvent)
+        scheduler.cancel()
+        server.watcher.off('change', onChange)
+        server.watcher.off('add', onAdd)
+        server.watcher.off('unlink', onUnlink)
         watcher = undefined
       }
       server.httpServer?.once('close', detach)

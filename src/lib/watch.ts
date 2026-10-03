@@ -1,27 +1,30 @@
 import path from 'node:path'
 import type { ResolvedOptions } from './options.js'
 
-// File basenames the plugin itself writes into the output tree.
-const GENERATED_BASENAMES = new Set([
-  'index.md',
-  '.gitignore',
-  '.openspec-manifest.json',
-  'proposal.md',
-  'design.md',
-  'tasks.md',
-])
+// Basenames of files the plugin writes into the output tree. Artifact
+// copies (proposal.md, design.md, tasks.md) are only written when the
+// output tree is distinct from the openspec source tree.
+const ALWAYS_GENERATED_BASENAMES = new Set(['index.md', '.gitignore', '.openspec-manifest.json'])
+const ARTIFACT_BASENAMES = new Set(['proposal.md', 'design.md', 'tasks.md'])
+
+function isOutputInsideSpecDir(options: ResolvedOptions): boolean {
+  const rel = path.relative(options.specDir, options.absoluteOutDir)
+  return !(rel.startsWith('..') || path.isAbsolute(rel))
+}
 
 /**
  * Whether a file inside the output tree was written by this plugin (as
  * opposed to an openspec source artifact that happens to live in the same
- * tree when specDir and outDir overlap). Only plugin-generated files are
- * excluded from watch-triggered regeneration, so genuine source edits
- * under the zero-config layout still regenerate pages.
+ * tree when specDir and outDir overlap). In the overlapping layout the
+ * plugin never copies artifacts onto themselves, so artifact-named files
+ * there are source files.
  */
 export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string): boolean {
   const relToOut = path.relative(options.absoluteOutDir, absFile)
   if (relToOut.startsWith('..') || path.isAbsolute(relToOut)) return false
-  return GENERATED_BASENAMES.has(path.basename(absFile))
+  const base = path.basename(absFile)
+  if (ALWAYS_GENERATED_BASENAMES.has(base)) return true
+  return ARTIFACT_BASENAMES.has(base) && !isOutputInsideSpecDir(options)
 }
 
 /**

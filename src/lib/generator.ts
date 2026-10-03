@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { Change } from '../types.js'
 import type { ResolvedOptions } from './options.js'
-import { PLUGIN_NAME, logError, logInfo, logWarn } from './logger.js'
+import { logError, logInfo, logWarn } from './logger.js'
 import { readOpenSpecFolder } from './reader.js'
 import { rewriteRelativeLinks } from './links.js'
 import {
@@ -34,35 +34,51 @@ function pruneEmptyDirs(rootDir: string, startDir: string): void {
   }
 }
 
-function recordManifest(files: string[], rootDir: string): void {
+/**
+ * Reads the previous run's manifest and deletes all recorded files.
+ * Runs BEFORE the new pages are written so that case-only renames on
+ * case-insensitive filesystems cannot make stale cleanup delete a
+ * freshly generated page that shares the same file.
+ *
+ * @returns entries whose deletion failed; they are retained in the next
+ * manifest so cleanup retries instead of forgetting them.
+ */
+function cleanupPreviousManifest(rootDir: string): string[] {
   const manifestPath = path.join(rootDir, MANIFEST_FILE)
+  if (!fs.existsSync(manifestPath)) return []
   let previous: string[] = []
-  if (fs.existsSync(manifestPath)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as unknown
-      if (Array.isArray(parsed)) previous = parsed.filter((f): f is string => typeof f === 'string')
-    } catch {
-      // Unreadable manifest: treat as empty and overwrite it below
-    }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as unknown
+    if (Array.isArray(parsed)) previous = parsed.filter((f): f is string => typeof f === 'string')
+  } catch {
+    // Unreadable manifest: treat as empty
+    return []
   }
   const retained: string[] = []
-  for (const stale of previous) {
-    if (files.includes(stale)) continue
-    const stalePath = path.resolve(rootDir, stale)
-    const rel = path.relative(rootDir, stalePath)
+  for (const entry of previous) {
+    const entryPath = path.resolve(rootDir, entry)
+    const rel = path.relative(rootDir, entryPath)
     if (rel.startsWith('..') || path.isAbsolute(rel)) continue
     try {
-      if (fs.existsSync(stalePath)) {
-        fs.rmSync(stalePath)
-        pruneEmptyDirs(rootDir, path.dirname(stalePath))
+      if (fs.existsSync(entryPath)) {
+        fs.rmSync(entryPath)
+        pruneEmptyDirs(rootDir, path.dirname(entryPath))
       }
     } catch {
-      // Deletion failed (e.g. locked file): keep the entry so the next
-      // run retries it instead of forgetting the stale page forever.
-      retained.push(stale)
+      // Deletion failed (e.g. locked file): retry on the next run
+      retained.push(entry)
     }
   }
-  writeFile(manifestPath, JSON.stringify([...files, ...retained], null, 2))
+  return retained
+}
+
+function writeManifest(files: string[], rootDir: string): void {
+  const manifestPath = path.join(rootDir, MANIFEST_FILE)
+  try {
+    writeFile(manifestPath, JSON.stringify(files, null, 2))
+  } catch {
+    // Best-effort: never fail generation because of the manifest
+  }
 }
 
 function writeChangePage(
@@ -97,10 +113,19 @@ function writeChangePage(
  * directory and writes them to disk, removing stale output from previous runs.
  */
 export function generatePages(options: ResolvedOptions): void {
+  // Remove stale output from the previous run even when the source
+  // directory has disappeared, so published pages do not linger forever.
+  const retained = cleanupPreviousManifest(options.absoluteOutDir)
+
   if (!fs.existsSync(options.specDir)) {
     logWarn(
       `openspec directory not found: ${path.relative(options.srcDir, options.specDir)} — skipping page generation`,
     )
+    // Persist only what still needs a retry; do not create an output
+    // directory when there is nothing to clean up or retain.
+    if (retained.length > 0 || fs.existsSync(options.absoluteOutDir)) {
+      writeManifest(retained, options.absoluteOutDir)
+    }
     return
   }
 
@@ -135,7 +160,7 @@ export function generatePages(options: ResolvedOptions): void {
 
     writeFile(path.join(options.absoluteOutDir, '.gitignore'), GITIGNORE_CONTENT)
 
-    recordManifest(written, options.absoluteOutDir)
+    writeManifest([...written, ...retained], options.absoluteOutDir)
 
     logInfo(
       `Generated docs from ${options.specDir}: ` +
