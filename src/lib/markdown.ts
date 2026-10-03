@@ -13,7 +13,7 @@ export function extractSpecDescription(content: string): string | undefined {
     const cut = sentence.lastIndexOf(' ', 160)
     sentence = (cut > 0 ? sentence.slice(0, cut) : sentence.slice(0, 160)) + '…'
   }
-  return sentence.replace(/"/g, '\\"')
+  return sentence.replace(/([\\"])/g, '\\$1')
 }
 
 export function stripDeltaMarkers(content: string): string {
