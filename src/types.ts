@@ -19,12 +19,6 @@ export interface WithOpenSpecOptions extends OpenSpecPluginOptions {
    * @default 'Docs'
    */
   navText?: string
-  /**
-   * Label for the top-level sidebar group injected into `themeConfig.sidebar`.
-   * Only used when no sidebar group exists yet.
-   * @default 'OpenSpec'
-   */
-  sidebarText?: string
 }
 
 /**

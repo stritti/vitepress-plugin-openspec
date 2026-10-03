@@ -1,5 +1,7 @@
 import fs from 'node:fs'
-import type { Plugin } from 'vite'
+import path from 'node:path'
+import type { Plugin, ViteDevServer } from 'vite'
+import type { ResolvedOptions } from './lib/options.js'
 import type { OpenSpecPluginOptions, WithOpenSpecOptions } from './types.js'
 import { PLUGIN_NAME, logWarn } from './lib/logger.js'
 import { resolveOptions } from './lib/options.js'
@@ -29,9 +31,33 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  * are generated once in `configResolved`. When using `withOpenSpec()` this
  * plugin is wired up automatically.
  */
+let regenerateTimer: ReturnType<typeof setTimeout> | undefined
+
+function onSourceChange(
+  options: ResolvedOptions,
+  server: ViteDevServer,
+  file: string,
+): void {
+  const absFile = path.resolve(file)
+  const relToSpec = path.relative(options.specDir, absFile)
+  if (relToSpec.startsWith('..') || path.isAbsolute(relToSpec)) return
+  // Ignore events for files inside the generated output directory to
+  // avoid watch loops when outDir is nested inside specDir.
+  const relToOut = path.relative(options.absoluteOutDir, absFile)
+  if (!(relToOut.startsWith('..') || path.isAbsolute(relToOut))) return
+  if (path.basename(absFile).startsWith('.')) return
+  // Debounce: editors often emit several events per save
+  if (regenerateTimer) clearTimeout(regenerateTimer)
+  regenerateTimer = setTimeout(() => {
+    regenerateTimer = undefined
+    generatePages(options)
+    server.ws.send({ type: 'full-reload' })
+  }, 100)
+}
+
 export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
-  let resolvedOptions: ReturnType<typeof resolveOptions> | undefined
-  let watcher: fs.FSWatcher | undefined
+  let resolvedOptions: ResolvedOptions | undefined
+  let watcher: { close: () => void } | undefined
 
   return {
     name: PLUGIN_NAME,
@@ -51,24 +77,20 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
         logWarn(
           `openspec directory not found: ${resolvedOptions.specDir} — skipping page generation`,
         )
+        resolvedOptions = undefined
         return
       }
       generatePages(resolvedOptions)
     },
 
     configureServer(server) {
-      if (!resolvedOptions) return
-      const specDir = resolvedOptions.specDir
-      watcher = fs.watch(
-        specDir,
-        { recursive: true },
-        (event: fs.WatchEventType, file: string | null) => {
-          if (typeof file === 'string' && file.startsWith('.')) return
-          generatePages(resolvedOptions!)
-          server.ws.send({ type: 'full-reload' })
-        },
-      )
-      server.httpServer?.once('close', () => watcher?.close())
+      if (!resolvedOptions || !fs.existsSync(resolvedOptions.specDir)) return
+      const options = resolvedOptions
+      // Use Vite's own watcher: it is supported on all Node versions and
+      // platforms declared by this package (unlike recursive fs.watch).
+      watcher = server.watcher.on('change', (file: string) => {
+        onSourceChange(options, server, file)
+      })
     },
 
     closeBundle() {

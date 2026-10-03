@@ -36,24 +36,30 @@ function pruneEmptyDirs(rootDir: string, startDir: string): void {
 
 function recordManifest(files: string[], rootDir: string): void {
   const manifestPath = path.join(rootDir, MANIFEST_FILE)
+  let previous: string[] = []
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as unknown
+      if (Array.isArray(parsed)) previous = parsed.filter((f): f is string => typeof f === 'string')
+    } catch {
+      // Unreadable manifest: treat as empty and overwrite it below
+    }
+  }
   try {
-    if (fs.existsSync(manifestPath)) {
-      const previous = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as string[] | null
-      if (Array.isArray(previous)) {
-        for (const stale of previous) {
-          if (files.includes(stale)) continue
-          const stalePath = path.join(rootDir, stale)
-          if (fs.existsSync(stalePath)) {
-            fs.rmSync(stalePath)
-            pruneEmptyDirs(rootDir, path.dirname(stalePath))
-          }
-        }
+    for (const stale of previous) {
+      if (files.includes(stale)) continue
+      const stalePath = path.resolve(rootDir, stale)
+      const rel = path.relative(rootDir, stalePath)
+      if (rel.startsWith('..') || path.isAbsolute(rel)) continue
+      if (fs.existsSync(stalePath)) {
+        fs.rmSync(stalePath)
+        pruneEmptyDirs(rootDir, path.dirname(stalePath))
       }
     }
-    writeFile(manifestPath, JSON.stringify(files, null, 2))
   } catch {
     // Cleanup is best-effort; never fail generation because of it
   }
+  writeFile(manifestPath, JSON.stringify(files, null, 2))
 }
 
 function writeChangePage(
@@ -74,6 +80,8 @@ function writeChangePage(
   for (const artifact of change.artifacts) {
     const srcFile = path.join(change.dir, `${artifact}.md`)
     const destFile = path.join(changeOutDir, `${artifact}.md`)
+    // When specDir and outDir overlap, never copy a file onto itself
+    if (path.resolve(srcFile) === path.resolve(destFile)) continue
     const content = fs.readFileSync(srcFile, 'utf-8')
     writeFile(destFile, rewriteRelativeLinks(content, srcFile, options.specDir, options.outDir))
     written.push(path.relative(options.absoluteOutDir, destFile))
@@ -124,7 +132,16 @@ export function generatePages(options: ResolvedOptions): void {
 
     writeFile(path.join(options.absoluteOutDir, '.gitignore'), GITIGNORE_CONTENT)
 
-    recordManifest(written, options.absoluteOutDir)
+    // Never record generated files that live inside the openspec source
+    // directory itself (overlapping specDir/outDir) — stale cleanup must
+    // never be able to delete openspec source files.
+    const manifestFiles = written.filter((f) => {
+      const abs = path.resolve(options.absoluteOutDir, f)
+      const rel = path.relative(options.specDir, abs)
+      return rel.startsWith('..') || path.isAbsolute(rel)
+    })
+
+    recordManifest(manifestFiles, options.absoluteOutDir)
 
     logInfo(
       `Generated docs from ${options.specDir}: ` +

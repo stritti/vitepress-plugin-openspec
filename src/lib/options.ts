@@ -27,17 +27,27 @@ export function resolveOptions(
   fallbackSrcDir?: string,
 ): ResolvedOptions {
   const specDir = userOptions.specDir ?? './openspec'
-  const outDir = userOptions.outDir ?? 'openspec'
+  // Normalize Windows-style separators so traversal variants like
+  // "nested\\..\\..\\outside" cannot bypass the containment check.
+  const outDir = (userOptions.outDir ?? 'openspec').replace(/\\/g, '/')
   const srcDir = userOptions.srcDir ?? fallbackSrcDir ?? process.cwd()
-  if (path.isAbsolute(outDir) || outDir === '' || outDir === '.' || outDir === '..' || outDir.startsWith('../')) {
+  if (path.isAbsolute(outDir) || outDir === '' || outDir === '.' || outDir === '..') {
     throw new Error(
       `[vitepress-plugin-openspec] Invalid outDir "${outDir}": it must be a relative path inside the VitePress srcDir.`,
+    )
+  }
+  const absoluteSrcDir = path.resolve(srcDir)
+  const absoluteOutDir = path.resolve(absoluteSrcDir, outDir)
+  const rel = path.relative(absoluteSrcDir, absoluteOutDir)
+  if (rel.startsWith('..') || path.isAbsolute(rel) || rel === '') {
+    throw new Error(
+      `[vitepress-plugin-openspec] Invalid outDir "${outDir}": it resolves outside the VitePress srcDir.`,
     )
   }
   return {
     specDir: path.resolve(specDir),
     outDir,
-    srcDir: path.resolve(srcDir),
-    absoluteOutDir: path.resolve(srcDir, outDir),
+    srcDir: absoluteSrcDir,
+    absoluteOutDir,
   }
 }
