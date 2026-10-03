@@ -69,6 +69,7 @@ export default defineConfig(
 | `srcDir` | `string` | `process.cwd()` | VitePress source directory (the `docs/` folder) |
 | `nav` | `boolean` | `true` | Whether to prepend an openspec entry to `themeConfig.nav` |
 | `sidebar` | `boolean` | `true` | Whether to inject the openspec sidebar section into `themeConfig.sidebar` |
+| `navText` | `string` | `'Docs'` | Label for the nav entry injected into `themeConfig.nav` |
 
 > **Missing directory** — if `specDir` does not exist the plugin emits a `console.warn` and skips page generation, nav, and sidebar. No error is thrown and your VitePress build continues normally. This is intentional for projects that haven't set up an `openspec/` folder yet.
 
