@@ -6,6 +6,7 @@ import type { OpenSpecPluginOptions, WithOpenSpecOptions } from './types.js'
 import { PLUGIN_NAME, logWarn } from './lib/logger.js'
 import { resolveOptions } from './lib/options.js'
 import { generatePages } from './lib/generator.js'
+import { readOpenSpecFolder } from './lib/reader.js'
 import { generateOpenSpecSidebar, openspecNav } from './lib/navigation.js'
 import { isSourceArtifactEvent } from './lib/watch.js'
 
@@ -32,6 +33,25 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  * are generated once in `configResolved`. When using `withOpenSpec()` this
  * plugin is wired up automatically.
  */
+/**
+ * Compact fingerprint of everything that feeds the sidebar and nav:
+ * spec and change names, titles, dates, and artifact lists. Comparing
+ * signatures before and after an edit tells us whether the navigation
+ * config changed and the dev server needs a full restart.
+ */
+function readNavigationSignature(options: ResolvedOptions): string {
+  try {
+    const folder = readOpenSpecFolder(options.specDir)
+    return JSON.stringify({
+      specs: folder.specs.map((s) => [s.name, s.title ?? null]),
+      changes: folder.changes.map((c) => [c.name, c.title ?? null, c.createdDate ?? null, c.artifacts]),
+      archived: folder.archivedChanges.map((c) => [c.name, c.title ?? null, c.archivedDate ?? null, c.artifacts]),
+    })
+  } catch {
+    return 'unreadable'
+  }
+}
+
 function createScheduler() {
   let timer: ReturnType<typeof setTimeout> | undefined
   return {
@@ -90,17 +110,22 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
       // the Vite root (the documented docs/ + openspec/ layout).
       server.watcher.add(options.specDir)
       const scheduler = createScheduler()
+      let navigationSignature = readNavigationSignature(options)
       const onWatchEvent = (event: 'change' | 'add' | 'unlink', file: string) => {
         const absFile = path.resolve(file)
         if (!isSourceArtifactEvent(options, absFile)) return
-        // Structural changes (files added or removed) also alter the
-        // sidebar, which is derived from the config; a full server
-        // restart regenerates both pages and navigation.
-        if (event === 'change') {
-          scheduler.schedule(options, server)
-        } else {
+        // Structural changes (files added or removed) and metadata edits
+        // (.openspec.yaml, spec/change titles) also alter the sidebar and
+        // nav, which are derived from the config; a full server restart
+        // regenerates both pages and navigation. Plain content edits take
+        // the fast regenerate+reload path unless a title changed.
+        const signature = readNavigationSignature(options)
+        const affectsNavigation = event !== 'change' || signature !== navigationSignature
+        if (affectsNavigation) {
           scheduler.cancel()
           server.restart(true)
+        } else {
+          scheduler.schedule(options, server)
         }
       }
       const onChange = (f: string) => onWatchEvent('change', f)

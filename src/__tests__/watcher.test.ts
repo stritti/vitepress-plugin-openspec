@@ -45,4 +45,15 @@ describe('watch event filtering', () => {
     expect(isPluginGeneratedFile(separate, path.join(separate.absoluteOutDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
     expect(isSourceArtifactEvent(separate, path.join(separate.absoluteOutDir, 'changes', 'add-login', 'proposal.md'))).toBe(false)
   })
+
+  it('treats artifact copies as generated when outDir is a proper child of specDir', () => {
+    const nested = resolveOptions({ specDir: '/project/openspec', outDir: 'openspec/site', srcDir: root })
+    expect(nested.specDir).toBe('/project/openspec')
+    expect(nested.absoluteOutDir).toBe(path.join(root, 'openspec', 'site'))
+    const copy = path.join(nested.absoluteOutDir, 'changes', 'add-login', 'proposal.md')
+    expect(isPluginGeneratedFile(nested, copy)).toBe(true)
+    expect(isSourceArtifactEvent(nested, copy)).toBe(false)
+    // the original source file is still a source
+    expect(isSourceArtifactEvent(nested, path.join(nested.specDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
+  })
 })

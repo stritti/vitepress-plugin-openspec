@@ -7,9 +7,8 @@ import type { ResolvedOptions } from './options.js'
 const ALWAYS_GENERATED_BASENAMES = new Set(['index.md', '.gitignore', '.openspec-manifest.json'])
 const ARTIFACT_BASENAMES = new Set(['proposal.md', 'design.md', 'tasks.md'])
 
-function isOutputInsideSpecDir(options: ResolvedOptions): boolean {
-  const rel = path.relative(options.specDir, options.absoluteOutDir)
-  return !(rel.startsWith('..') || path.isAbsolute(rel))
+function outputEqualsSpecDir(options: ResolvedOptions): boolean {
+  return options.absoluteOutDir === options.specDir
 }
 
 /**
@@ -24,7 +23,12 @@ export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string)
   if (relToOut.startsWith('..') || path.isAbsolute(relToOut)) return false
   const base = path.basename(absFile)
   if (ALWAYS_GENERATED_BASENAMES.has(base)) return true
-  return ARTIFACT_BASENAMES.has(base) && !isOutputInsideSpecDir(options)
+  // Artifact copies are only written when the output tree is distinct
+  // from the openspec source tree. When specDir and outDir are exactly
+  // equal (zero-config), artifact-named files can only be sources. When
+  // outDir is a proper child of specDir, the plugin does copy artifacts
+  // into it, so those copies count as generated.
+  return ARTIFACT_BASENAMES.has(base) && !outputEqualsSpecDir(options)
 }
 
 /**

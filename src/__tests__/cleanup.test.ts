@@ -12,6 +12,42 @@ function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-cleanup-test-'))
 }
 
+describe('failure safety', () => {
+  it('preserves the last successful output when a source read fails mid-generation', () => {
+    const dir = tmpDir()
+    try {
+      generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: dir })
+      const rootIndex = path.join(dir, 'docs', 'index.md')
+      const original = fs.readFileSync(rootIndex, 'utf-8')
+      // Simulate a source read failing during the next run (e.g. an
+      // artifact disappears between listing and reading during an
+      // atomic editor save)
+      const realReadFileSync = fs.readFileSync
+      const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementation((
+        p: fs.PathOrFileDescriptor,
+        ...args: unknown[]
+      ) => {
+        if (typeof p === 'string' && p === path.join(FIXTURE, 'changes', 'add-login', 'proposal.md')) {
+          throw Object.assign(new Error('ENOENT: file gone'), { code: 'ENOENT' })
+        }
+        return (realReadFileSync as unknown as (fp: fs.PathOrFileDescriptor, ...a: unknown[]) => string)(p, ...args)
+      })
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        generateOpenSpecPages({ specDir: FIXTURE, outDir: 'docs', srcDir: dir })
+      } finally {
+        errSpy.mockRestore()
+        readSpy.mockRestore()
+      }
+      // Previous output is fully intact
+      expect(fs.readFileSync(rootIndex, 'utf-8')).toBe(original)
+      expect(fs.existsSync(path.join(dir, 'docs', 'specs', 'auth-flow', 'index.md'))).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true })
+    }
+  })
+})
+
 describe('stale cleanup ordering', () => {
   it('removes all generated pages when the openspec directory disappears', () => {
     const dir = tmpDir()
