@@ -1,34 +1,59 @@
 import path from 'node:path'
 import type { ResolvedOptions } from './options.js'
 
-// Basenames of files the plugin writes into the output tree. Artifact
-// copies (proposal.md, design.md, tasks.md) are only written when the
-// output tree is distinct from the openspec source tree.
+// Basenames of files the plugin always writes into the output tree.
 const ALWAYS_GENERATED_BASENAMES = new Set(['index.md', '.gitignore', '.openspec-manifest.json'])
+// Artifact copies the plugin writes when the output tree is distinct
+// from the openspec source tree.
 const ARTIFACT_BASENAMES = new Set(['proposal.md', 'design.md', 'tasks.md'])
 
-function outputEqualsSpecDir(options: ResolvedOptions): boolean {
-  return options.absoluteOutDir === options.specDir
+function isInside(parent: string, child: string): boolean {
+  const rel = path.relative(parent, child)
+  return !(rel.startsWith('..') || path.isAbsolute(rel))
+}
+
+/**
+ * Layout classification for the overlapping specDir/outDir cases:
+ * - 'equal': specDir and outDir are the same directory
+ * - 'out-inside-spec': outDir is a proper child of specDir
+ * - 'spec-inside-out': specDir is a proper child of outDir
+ * - 'disjoint': no overlap
+ */
+export type LayoutRelation = 'equal' | 'out-inside-spec' | 'spec-inside-out' | 'disjoint'
+
+export function classifyLayout(options: ResolvedOptions): LayoutRelation {
+  if (options.specDir === options.absoluteOutDir) return 'equal'
+  if (isInside(options.specDir, options.absoluteOutDir)) return 'out-inside-spec'
+  if (isInside(options.absoluteOutDir, options.specDir)) return 'spec-inside-out'
+  return 'disjoint'
 }
 
 /**
  * Whether a file inside the output tree was written by this plugin (as
  * opposed to an openspec source artifact that happens to live in the same
- * tree when specDir and outDir overlap). In the overlapping layout the
- * plugin never copies artifacts onto themselves, so artifact-named files
- * there are source files.
+ * tree when specDir and outDir overlap).
+ *
+ * Layout rules (generated destinations never coincide with source files):
+ * - 'equal': the shared tree only receives index.md/.gitignore/manifest
+ *   from the plugin; artifact-named files are sources.
+ * - 'out-inside-spec' / 'disjoint': the plugin writes artifact copies into
+ *   the output tree; every known basename inside it is generated.
+ * - 'spec-inside-out': source files live inside the output tree; files
+ *   inside specDir are sources, only files outside it are generated.
  */
 export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string): boolean {
-  const relToOut = path.relative(options.absoluteOutDir, absFile)
-  if (relToOut.startsWith('..') || path.isAbsolute(relToOut)) return false
+  if (!isInside(options.absoluteOutDir, absFile)) return false
   const base = path.basename(absFile)
-  if (ALWAYS_GENERATED_BASENAMES.has(base)) return true
-  // Artifact copies are only written when the output tree is distinct
-  // from the openspec source tree. When specDir and outDir are exactly
-  // equal (zero-config), artifact-named files can only be sources. When
-  // outDir is a proper child of specDir, the plugin does copy artifacts
-  // into it, so those copies count as generated.
-  return ARTIFACT_BASENAMES.has(base) && !outputEqualsSpecDir(options)
+  switch (classifyLayout(options)) {
+    case 'equal':
+      return ALWAYS_GENERATED_BASENAMES.has(base)
+    case 'out-inside-spec':
+    case 'disjoint':
+      return ALWAYS_GENERATED_BASENAMES.has(base) || ARTIFACT_BASENAMES.has(base)
+    case 'spec-inside-out':
+      return !isInside(options.specDir, absFile) &&
+        (ALWAYS_GENERATED_BASENAMES.has(base) || ARTIFACT_BASENAMES.has(base))
+  }
 }
 
 /**
@@ -37,7 +62,6 @@ export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string)
  * `.openspec.yaml`), false for files the plugin itself generated.
  */
 export function isSourceArtifactEvent(options: ResolvedOptions, absFile: string): boolean {
-  const relToSpec = path.relative(options.specDir, absFile)
-  if (relToSpec.startsWith('..') || path.isAbsolute(relToSpec)) return false
+  if (!isInside(options.specDir, absFile)) return false
   return !isPluginGeneratedFile(options, absFile)
 }

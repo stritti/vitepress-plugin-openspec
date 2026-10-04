@@ -52,6 +52,26 @@ function readNavigationSignature(options: ResolvedOptions): string {
   }
 }
 
+/**
+ * Updates the sidebar and nav entries inside the in-memory VitePress
+ * theme config that `withOpenSpec()` created. `server.restart(true)` only
+ * re-creates Vite from the already-resolved inline configuration, so it
+ * never re-runs `withOpenSpec()`; mutating the live themeConfig object
+ * before the restart is what actually refreshes the navigation.
+ */
+function updateNavigationInMemory(options: ResolvedOptions, server: ViteDevServer): void {
+  const vp = (server.config as unknown as { vitepress?: { themeConfig?: Record<string, unknown> } }).vitepress
+  const themeConfig = vp?.themeConfig
+  if (!themeConfig) return
+  const sidebarKey = `/${options.outDir}/`
+  const items = generateOpenSpecSidebar(options.specDir, { outDir: options.outDir })
+  if (items.length > 0) {
+    const sidebar = (themeConfig.sidebar ?? {}) as Record<string, unknown>
+    sidebar[sidebarKey] = items
+    themeConfig.sidebar = sidebar
+  }
+}
+
 function createScheduler() {
   let timer: ReturnType<typeof setTimeout> | undefined
   return {
@@ -123,6 +143,8 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
         const affectsNavigation = event !== 'change' || signature !== navigationSignature
         if (affectsNavigation) {
           scheduler.cancel()
+          updateNavigationInMemory(options, server)
+          navigationSignature = signature
           server.restart(true)
         } else {
           scheduler.schedule(options, server)
