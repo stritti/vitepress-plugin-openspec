@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -185,5 +185,41 @@ describe('withOpenSpec', () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe('sixth-round review fixes', () => {
+  let tmpDir: string
+  const originalCwd = process.cwd()
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-sixth-'))
+  })
+
+  afterEach(() => {
+    process.chdir(originalCwd)
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  it('normalizes an array sidebar to object form and injects under the route key', () => {
+    const existing = [{ text: 'Home', link: '/' }]
+    const result = withOpenSpec(
+      { themeConfig: { sidebar: existing } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir },
+    )
+    const sidebar = (result.themeConfig as unknown as { sidebar: Record<string, unknown> }).sidebar
+    expect(Array.isArray(sidebar)).toBe(false)
+    expect(sidebar['/']).toEqual(existing)
+    expect(sidebar['/docs/']).toBeDefined()
+  })
+
+  it('does not touch a pre-existing custom sidebar entry for the openspec route', () => {
+    const custom = [{ text: 'My custom section', link: '/other/' }]
+    const result = withOpenSpec(
+      { themeConfig: { sidebar: { '/docs/': custom } } },
+      { specDir: FIXTURE, outDir: 'docs', srcDir: tmpDir },
+    )
+    const sidebar = (result.themeConfig as { sidebar: Record<string, unknown> }).sidebar as Record<string, unknown>
+    expect(sidebar['/docs/']).toEqual(custom)
   })
 })

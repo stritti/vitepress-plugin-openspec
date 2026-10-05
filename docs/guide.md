@@ -91,6 +91,8 @@ All APIs accept the same options object:
 
 > **Missing directory** — if `specDir` does not exist the plugin emits a `console.warn` and skips page generation, nav, and sidebar. No error is thrown and your VitePress build continues normally. This is intentional for projects that haven't set up an `openspec/` folder yet.
 
+> **Invalid `outDir`** — an `outDir` that is absolute, empty, or resolves outside the VitePress `srcDir` throws an error at config evaluation time. Unlike a missing `specDir`, a misconfigured output path is never silently ignored.
+
 ---
 
 ## .gitignore

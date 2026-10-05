@@ -1,11 +1,39 @@
 import path from 'node:path'
 import type { ResolvedOptions } from './options.js'
+import { readManifest } from './generator.js'
 
 // Basenames of files the plugin always writes into the output tree.
 const ALWAYS_GENERATED_BASENAMES = new Set(['index.md', '.gitignore', '.openspec-manifest.json'])
 // Artifact copies the plugin writes when the output tree is distinct
 // from the openspec source tree.
 const ARTIFACT_BASENAMES = new Set(['proposal.md', 'design.md', 'tasks.md'])
+
+const generatedDestCache = new Map<string, Set<string>>()
+
+/**
+ * Resolved absolute destinations of all files recorded in the previous
+ * run's manifest — i.e. paths the plugin itself wrote. Only these exact
+ * destinations count as generated, never a basename heuristic, so real
+ * source artifacts that live inside the output tree remain watchable.
+ */
+function generatedDestinations(absoluteOutDir: string): Set<string> {
+  const cached = generatedDestCache.get(absoluteOutDir)
+  if (cached) return cached
+  const set = new Set<string>()
+  for (const entry of readManifest(absoluteOutDir)) {
+    set.add(path.resolve(absoluteOutDir, entry))
+  }
+  generatedDestCache.set(absoluteOutDir, set)
+  return set
+}
+
+/**
+ * Invalidates the cached manifest destinations after a regeneration wrote
+ * a new manifest.
+ */
+export function invalidateGeneratedDestinations(absoluteOutDir: string): void {
+  generatedDestCache.delete(absoluteOutDir)
+}
 
 function isInside(parent: string, child: string): boolean {
   const rel = path.relative(parent, child)
@@ -43,11 +71,20 @@ export function classifyLayout(options: ResolvedOptions): LayoutRelation {
  */
 export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string): boolean {
   if (!isInside(options.absoluteOutDir, absFile)) return false
+  // Only exact destinations recorded in the generation manifest are
+  // generated output — never a basename heuristic. This keeps real source
+  // artifacts inside an overlapping output tree watchable.
+  if (generatedDestinations(options.absoluteOutDir).has(path.resolve(absFile))) return true
   const base = path.basename(absFile)
   switch (classifyLayout(options)) {
     case 'equal':
       return ALWAYS_GENERATED_BASENAMES.has(base)
     case 'out-inside-spec':
+      // The output tree is nested inside specDir, so a basename match can
+      // hit real source files too. Only the exact destinations recorded
+      // in the manifest (checked above) plus the always-generated
+      // top-level markers count as plugin output.
+      return ALWAYS_GENERATED_BASENAMES.has(base) && !isInside(options.specDir, absFile)
     case 'disjoint':
       return ALWAYS_GENERATED_BASENAMES.has(base) || ARTIFACT_BASENAMES.has(base)
     case 'spec-inside-out':

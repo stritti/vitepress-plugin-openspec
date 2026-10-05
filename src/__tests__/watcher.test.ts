@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import path from 'node:path'
+import fs from 'node:fs'
+import os from 'node:os'
 import { resolveOptions } from '../lib/options.js'
-import { classifyLayout, isPluginGeneratedFile, isSourceArtifactEvent } from '../lib/watch.js'
+import { classifyLayout, isPluginGeneratedFile, isSourceArtifactEvent, invalidateGeneratedDestinations } from '../lib/watch.js'
 
 const root = path.resolve('/project/docs')
 
@@ -70,13 +72,80 @@ describe('watch event filtering', () => {
   })
 
   it('treats artifact copies as generated when outDir is a proper child of specDir', () => {
-    const nested = resolveOptions({ specDir: path.join(root, 'openspec'), outDir: 'openspec/site', srcDir: root })
-    expect(nested.specDir).toBe(path.join(root, 'openspec'))
-    expect(nested.absoluteOutDir).toBe(path.join(root, 'openspec', 'site'))
-    const copy = path.join(nested.absoluteOutDir, 'changes', 'add-login', 'proposal.md')
-    expect(isPluginGeneratedFile(nested, copy)).toBe(true)
-    expect(isSourceArtifactEvent(nested, copy)).toBe(false)
-    // the original source file is still a source
-    expect(isSourceArtifactEvent(nested, path.join(nested.specDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-nested-'))
+    try {
+      const nested = resolveOptions({ specDir: path.join(dir, 'openspec'), outDir: 'openspec/site', srcDir: dir })
+      expect(nested.specDir).toBe(path.join(dir, 'openspec'))
+      expect(nested.absoluteOutDir).toBe(path.join(dir, 'openspec', 'site'))
+      const copy = path.join(nested.absoluteOutDir, 'changes', 'add-login', 'proposal.md')
+      // Without a manifest record the basename heuristic must NOT classify
+      // it (a real source could live there) — only manifest entries do.
+      expect(isPluginGeneratedFile(nested, copy)).toBe(false)
+      // ... but once the manifest records the copy it is generated output
+      fs.mkdirSync(nested.absoluteOutDir, { recursive: true })
+      fs.writeFileSync(path.join(nested.absoluteOutDir, '.openspec-manifest.json'), JSON.stringify(['changes/add-login/proposal.md']))
+      invalidateGeneratedDestinations(nested.absoluteOutDir)
+      expect(isPluginGeneratedFile(nested, copy)).toBe(true)
+      expect(isSourceArtifactEvent(nested, copy)).toBe(false)
+      // the original source file is still a source
+      expect(isSourceArtifactEvent(nested, path.join(nested.specDir, 'changes', 'add-login', 'proposal.md'))).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('manifest-based generated-file detection', () => {
+  it('treats a nested source artifact not present in the manifest as a source', () => {
+    // specDir nested below absoluteOutDir; no manifest exists yet
+    const reverse = resolveOptions({ specDir: path.join(root, 'openspec', 'source'), outDir: 'openspec', srcDir: root })
+    const srcArtifact = path.join(reverse.specDir, 'changes', 'add-login', 'proposal.md')
+    expect(isPluginGeneratedFile(reverse, srcArtifact)).toBe(false)
+    expect(isSourceArtifactEvent(reverse, srcArtifact)).toBe(true)
+  })
+
+  it('treats an artifact-basename file in a nested output as a source when it is not a manifest destination', () => {
+    // specDir encompasses the canonical changes dir: docs/openspec with outDir openspec/changes
+    const nested = resolveOptions({ specDir: path.join(root, 'openspec'), outDir: 'openspec/changes', srcDir: root })
+    const srcArtifact = path.join(nested.specDir, 'changes', 'add-login', 'proposal.md')
+    expect(isSourceArtifactEvent(nested, srcArtifact)).toBe(true)
+  })
+
+  it('classifies recorded manifest destinations as generated even inside overlapping layouts', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-manifest-'))
+    try {
+      const nested = resolveOptions({ specDir: path.join(dir, 'openspec'), outDir: 'openspec/changes', srcDir: dir })
+      fs.mkdirSync(nested.absoluteOutDir, { recursive: true })
+      fs.writeFileSync(path.join(nested.absoluteOutDir, '.openspec-manifest.json'), JSON.stringify(['changes/add-login/proposal.md']))
+      invalidateGeneratedDestinations(nested.absoluteOutDir)
+      const copy = path.join(nested.absoluteOutDir, 'changes', 'add-login', 'proposal.md')
+      expect(isPluginGeneratedFile(nested, copy)).toBe(true)
+      expect(isSourceArtifactEvent(nested, copy)).toBe(false)
+      // the real source file at the same basename stays watchable
+      const srcArtifact = path.join(nested.specDir, 'changes', 'add-login', 'proposal.md')
+      expect(isSourceArtifactEvent(nested, srcArtifact)).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('generated destination cache', () => {
+  it('invalidates cached manifest destinations', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-watch-'))
+    try {
+      fs.writeFileSync(path.join(dir, '.openspec-manifest.json'), JSON.stringify(['index.md']))
+      const nested = resolveOptions({ specDir: path.join(dir, 'openspec'), outDir: 'out', srcDir: dir })
+      fs.mkdirSync(nested.absoluteOutDir, { recursive: true })
+      fs.writeFileSync(path.join(nested.absoluteOutDir, '.openspec-manifest.json'), JSON.stringify(['index.md']))
+      expect(isPluginGeneratedFile(nested, path.join(nested.absoluteOutDir, 'index.md'))).toBe(true)
+      fs.rmSync(path.join(nested.absoluteOutDir, '.openspec-manifest.json'))
+      invalidateGeneratedDestinations(nested.absoluteOutDir)
+      // index.md still matches the ALWAYS_GENERATED basename, so use an artifact name
+      fs.writeFileSync(path.join(nested.absoluteOutDir, '.openspec-manifest.json'), JSON.stringify(['changes/x/proposal.md']))
+      expect(isPluginGeneratedFile(nested, path.join(nested.absoluteOutDir, 'index.md'))).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
