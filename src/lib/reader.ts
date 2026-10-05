@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import yaml from 'js-yaml'
+import { load as yamlLoad } from 'js-yaml'
 import type { CapabilitySpec, Change, ChangeArtifact, OpenSpecFolder } from '../types.js'
 
 const ARTIFACT_NAMES: ChangeArtifact[] = ['proposal', 'design', 'tasks']
@@ -9,7 +9,7 @@ function readOpenSpecYaml(dir: string): Record<string, unknown> {
   const yamlPath = path.join(dir, '.openspec.yaml')
   if (!fs.existsSync(yamlPath)) return {}
   try {
-    return (yaml.load(fs.readFileSync(yamlPath, 'utf-8')) ?? {}) as Record<string, unknown>
+    return (yamlLoad(fs.readFileSync(yamlPath, 'utf-8')) ?? {}) as Record<string, unknown>
   } catch {
     return {}
   }
