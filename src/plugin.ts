@@ -9,6 +9,7 @@ import { generatePages } from './lib/generator.js'
 import { openspecNav, generateOpenSpecSidebar } from './lib/navigation.js'
 import { isSourceArtifactEvent } from './lib/watch.js'
 import { createScheduler, readNavigationSignature, updateNavigationInMemory } from './lib/dev-server.js'
+import { detectSrcDir, detectVitePressRoot } from './lib/detect.js'
 
 /**
  * Synchronously generates all VitePress Markdown pages from the openspec/
@@ -19,12 +20,20 @@ import { createScheduler, readNavigationSignature, updateNavigationInMemory } fr
  * directory for routes. In most cases `withOpenSpec()` (which calls this
  * internally) is the simpler integration point.
  *
+ * @returns true when pages were written; false when generation was skipped
+ *   (missing or unreadable source, ambiguous source-directory detection) or
+ *   failed.
  * @throws if `outDir` is not a relative path inside `srcDir` (absolute,
  *   traversal, or empty).
  */
-export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): void {
-  const options = resolveOptions(userOptions)
-  generatePages(options)
+export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): boolean {
+  // When source-directory detection is ambiguous (multiple .vitepress
+  // folders at the same level), detectSrcDir has already warned; skip
+  // generation instead of writing into the common parent.
+  const detectedSrcDir = userOptions.srcDir ?? detectSrcDir(process.cwd())
+  if (!detectedSrcDir) return false
+  const options = resolveOptions(userOptions, detectedSrcDir)
+  return generatePages(options)
 }
 
 /**
@@ -137,6 +146,11 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
  * Other Vite plugins go into `vite.plugins` as usual — `withOpenSpec` appends to
  * the array without replacing it.
  *
+ * When the VitePress source directory cannot be detected unambiguously
+ * (multiple `.vitepress` folders at the same level), a warning is emitted and
+ * the config is returned with only the sidebar shape normalized — nothing is
+ * generated or injected.
+ *
  * @param config - Your VitePress `UserConfig` object (same as what `defineConfig` accepts).
  * @param options - OpenSpec options. All fields are optional; defaults match `generateOpenSpecPages`.
  * @throws if `outDir` is not a relative path inside `srcDir` (absolute, traversal, or empty).
@@ -145,27 +159,45 @@ export function withOpenSpec<T extends Record<string, unknown>>(
   config: T,
   options: WithOpenSpecOptions = {},
 ): T {
-  let resolved
+  const cwd = process.cwd()
+  // Resolve a relative srcDir from the wrapped config the same way
+  // VitePress resolves it: against the detected project root.
+  const configSrcDir =
+    typeof config.srcDir === 'string' && config.srcDir
+      ? path.resolve(detectVitePressRoot(cwd), config.srcDir)
+      : undefined
+  const detectedSrcDir = options.srcDir ?? configSrcDir ?? detectSrcDir(cwd)
+  const result = { ...config } as Record<string, unknown>
+  const themeConfig = (result.themeConfig ?? {}) as Record<string, unknown>
+  // Normalize an array-based (single-sidebar) config to the object form so
+  // the injected section always lands under its route key — also when
+  // generation is skipped below.
+  if (Array.isArray(themeConfig.sidebar)) {
+    themeConfig.sidebar = { '/': themeConfig.sidebar }
+  }
+  result.themeConfig = themeConfig
+  // When source-directory detection is ambiguous, detectSrcDir has already
+  // warned; skip generation and integration instead of writing into the
+  // common parent of multiple VitePress sites.
+  if (detectedSrcDir === undefined) return result as T
+
+  let resolved: ResolvedOptions
   try {
-    resolved = resolveOptions(options)
+    resolved = resolveOptions(options, detectedSrcDir)
   } catch (err) {
     logWarn(String(err))
-    return config
+    return result as T
   }
 
-  generatePages(resolved)
-
-  const result = { ...config } as Record<string, unknown>
+  const generated = generatePages(resolved)
 
   // --- Vite plugin ---
   const vite = (result.vite ?? {}) as Record<string, unknown>
   const existingPlugins = (vite.plugins as unknown[]) ?? []
   result.vite = { ...vite, plugins: [...existingPlugins, openspec({ ...options })] }
 
-  const themeConfig = (result.themeConfig ?? {}) as Record<string, unknown>
-
   // --- Nav ---
-  if (options.nav !== false) {
+  if (generated && options.nav !== false) {
     const navEntry = openspecNav(resolved.specDir, {
       outDir: resolved.outDir,
       text: options.navText,
@@ -175,17 +207,11 @@ export function withOpenSpec<T extends Record<string, unknown>>(
   }
 
   // --- Sidebar ---
-  // Normalize an array-based (single-sidebar) config to the object form so
-  // the injected section always lands under its route key — consistent
-  // with PR #40's behavior.
-  if (Array.isArray(themeConfig.sidebar)) {
-    themeConfig.sidebar = { '/': themeConfig.sidebar }
-  }
   const sidebarKey = `/${resolved.outDir}/`
   const existingSidebar = (themeConfig.sidebar ?? {}) as Record<string, unknown>
   // The plugin only owns (and the watcher only updates) an entry it created
   // itself; a pre-existing custom entry for this route is preserved as-is.
-  const pluginOwnsSidebarEntry = options.sidebar !== false && !existingSidebar[sidebarKey]
+  const pluginOwnsSidebarEntry = generated && options.sidebar !== false && !existingSidebar[sidebarKey]
   if (pluginOwnsSidebarEntry) {
     const items = generateOpenSpecSidebar(resolved.specDir, { outDir: resolved.outDir })
     if (items.length > 0) {

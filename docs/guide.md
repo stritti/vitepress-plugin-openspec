@@ -36,7 +36,35 @@ See [openspec.dev](https://openspec.dev/) for how to create and manage this stru
 
 ## Configuration
 
-Add the following to your `docs/.vitepress/config.ts`:
+### Recommended: `withOpenSpec()` (zero-config)
+
+Wrap your VitePress config with `withOpenSpec()` — it handles page generation, the Vite plugin for live reload, the nav entry, and the sidebar section in one call:
+
+```typescript
+import { defineConfig } from 'vitepress'
+import { withOpenSpec } from '@stritti/vitepress-plugin-openspec'
+
+export default defineConfig(
+  withOpenSpec({
+    // your regular VitePress config
+    themeConfig: {
+      nav: [{ text: 'Home', link: '/' }],
+      sidebar: {},
+    },
+  }),
+)
+```
+
+**No paths required.** `specDir` and `srcDir` are auto-detected:
+
+- `specDir`: the plugin walks up from the working directory until it finds an `openspec/` folder — the standard layout (`openspec/` at the repo root) needs no configuration.
+- `srcDir`: the plugin detects the directory containing `.vitepress` (the working directory, a first-level subdirectory such as `docs/`, or the parent when the config is evaluated from inside `docs/.vitepress/`).
+
+An array-based `sidebar` is automatically converted to the object form (`{ '/': [...] }`) so the openspec section can be injected without discarding existing entries.
+
+### Advanced: manual setup
+
+If you need full control over each integration point, wire up the lower-level APIs individually:
 
 ```typescript
 import { defineConfig } from 'vitepress'
@@ -85,9 +113,9 @@ All APIs accept the same options object:
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specDir` | `string` | `'./openspec'` | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
+| `specDir` | `string` | auto-detected (`<nearest ancestor>/openspec`, fallback `'./openspec'`) | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
 | `outDir` | `string` | `'openspec'` | Output directory relative to VitePress `srcDir` |
-| `srcDir` | `string` | `process.cwd()` | Your VitePress source directory (`docs/`). Required for `generateOpenSpecPages`. |
+| `srcDir` | `string` | auto-detected (directory containing `.vitepress`, fallback working directory) | Your VitePress source directory (`docs/`). |
 
 > **Missing directory** — if `specDir` does not exist the plugin emits a `console.warn` and skips page generation, nav, and sidebar. No error is thrown and your VitePress build continues normally. This is intentional for projects that haven't set up an `openspec/` folder yet.
 

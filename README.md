@@ -40,6 +40,13 @@ export default defineConfig(
 
 `withOpenSpec` handles everything in one call: page generation, the Vite plugin for live reload, the nav entry, and the sidebar section. All fields are optional — it works with an empty config object and sensible defaults.
 
+**Zero-config by default:** `specDir` and `srcDir` are auto-detected.
+
+- `specDir`: the plugin walks up from the working directory until it finds an `openspec/` folder, so the standard project layout (`openspec/` at the repo root, docs in `docs/.vitepress/config.ts`) needs no path configuration at all.
+- `srcDir`: the plugin detects the directory containing `.vitepress` — either the working directory itself, a first-level subdirectory such as `docs/`, or the parent when the config is evaluated from inside `docs/.vitepress/`.
+
+An array-based `sidebar` (single sidebar) is automatically converted to the object form `{ '/': [...] }` so the openspec section can be injected without discarding your existing entries.
+
 **Other Vite plugins** go into `vite.plugins` as usual — `withOpenSpec` appends to the array without replacing it:
 
 ```typescript
@@ -64,9 +71,9 @@ export default defineConfig(
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specDir` | `string` | `'./openspec'` | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
+| `specDir` | `string` | auto-detected (`<nearest ancestor>/openspec`, fallback `'./openspec'`) | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
 | `outDir` | `string` | `'openspec'` | Output directory relative to VitePress `srcDir` |
-| `srcDir` | `string` | `process.cwd()` | VitePress source directory (the `docs/` folder) |
+| `srcDir` | `string` | auto-detected (directory containing `.vitepress`, fallback working directory) | VitePress source directory (the `docs/` folder) |
 | `nav` | `boolean` | `true` | Whether to prepend an openspec entry to `themeConfig.nav` |
 | `sidebar` | `boolean` | `true` | Whether to inject the openspec sidebar section into `themeConfig.sidebar` |
 | `navText` | `string` | `'Docs'` | Label for the nav entry injected into `themeConfig.nav` |

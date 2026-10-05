@@ -28,14 +28,16 @@ export interface OpenSpecPluginOptions {
   /**
    * Path to the openspec/ directory of the project.
    *
-   * Use an explicit path when your `openspec/` folder is not at the project root
-   * (e.g. when `config.ts` lives inside `docs/.vitepress/`).
+   * By default the plugin walks up from the current working directory looking
+   * for an `openspec/` folder (skipping generated output recognized by its
+   * marker), so no configuration is needed when it lives at the project root.
+   * Set an explicit path only for custom locations.
    *
    * If the directory does not exist a warning is printed and the build continues
    * without generating any pages or nav/sidebar entries — no error is thrown.
    * An invalid `outDir` (absolute, empty, or escaping `srcDir`) throws instead.
    *
-   * @default './openspec'
+   * @default auto-detected (`<nearest ancestor>/openspec`, falling back to `'./openspec'`)
    * @example
    * // Resolving from docs/.vitepress/config.ts
    * import path from 'node:path'
@@ -54,10 +56,12 @@ export interface OpenSpecPluginOptions {
 
   /**
    * VitePress source directory — the directory containing your `.md` files
-   * (i.e. the `docs/` folder). Required when calling `generateOpenSpecPages()`
-   * at config evaluation time so it knows where to write the generated files.
+   * (i.e. the `docs/` folder). By default the plugin detects the directory that
+   * contains `.vitepress` (the working directory, a first-level subdirectory
+   * such as `docs/`, or the parent when the config is evaluated from inside
+   * `docs/.vitepress/`), so no configuration is needed for standard layouts.
    *
-   * @default process.cwd()
+   * @default auto-detected (directory containing `.vitepress`, falling back to the working directory)
    * @example path.resolve(__dirname, '..')  // from docs/.vitepress/config.ts
    */
   srcDir?: string
