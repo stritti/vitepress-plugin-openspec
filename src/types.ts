@@ -14,6 +14,11 @@ export interface WithOpenSpecOptions extends OpenSpecPluginOptions {
    * @default true
    */
   sidebar?: boolean
+  /**
+   * Label for the nav entry injected into `themeConfig.nav`.
+   * @default 'Docs'
+   */
+  navText?: string
 }
 
 /**
@@ -28,6 +33,7 @@ export interface OpenSpecPluginOptions {
    *
    * If the directory does not exist a warning is printed and the build continues
    * without generating any pages or nav/sidebar entries — no error is thrown.
+   * An invalid `outDir` (absolute, empty, or escaping `srcDir`) throws instead.
    *
    * @default './openspec'
    * @example
