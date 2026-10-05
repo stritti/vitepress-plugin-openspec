@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --emitDeclarationOnly --declaration --declarationMap --outDir dist",
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build",
