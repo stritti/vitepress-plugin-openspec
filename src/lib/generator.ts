@@ -175,8 +175,11 @@ function renderAllPages(options: ResolvedOptions): OutputFile[] {
 /**
  * Synchronously generates all VitePress Markdown pages from the openspec/
  * directory and writes them to disk, removing stale output from previous runs.
+ *
+ * @returns true when pages were written; false when generation was skipped
+ *   (missing or unreadable source) or failed.
  */
-export function generatePages(options: ResolvedOptions): void {
+export function generatePages(options: ResolvedOptions): boolean {
   // Remove stale output from the previous run even when the source
   // directory has disappeared, so published pages do not linger forever.
   if (!fs.existsSync(options.specDir)) {
@@ -187,7 +190,7 @@ export function generatePages(options: ResolvedOptions): void {
     if (retained.length > 0 || fs.existsSync(options.absoluteOutDir)) {
       writeManifest(retained, options.absoluteOutDir)
     }
-    return
+    return false
   }
 
   // Phase 1: read sources and render everything in memory. A failure here
@@ -197,24 +200,27 @@ export function generatePages(options: ResolvedOptions): void {
     files = renderAllPages(options)
   } catch (err) {
     logError(`Failed to process openspec directory "${options.specDir}": ${String(err)}`)
-    return
+    return false
   }
 
   // Phase 2: destructive cleanup of the previous output, now that the
   // replacement generation is complete and safe to write.
   const retained = cleanupPreviousManifest(options.absoluteOutDir)
 
-  // Phase 3: write the new pages.
+  // Phase 3: write the new pages. The self-managed .gitignore marker goes
+  // first so even an interrupted run leaves the output recognizable as
+  // generated output — never mistaken for the openspec source.
   try {
+    writeFile(path.join(options.absoluteOutDir, '.gitignore'), GITIGNORE_CONTENT)
     for (const file of files) {
       writeFile(path.join(options.absoluteOutDir, file.rel), file.content)
     }
-    writeFile(path.join(options.absoluteOutDir, '.gitignore'), GITIGNORE_CONTENT)
     writeManifest([...files.map((f) => f.rel), ...retained], options.absoluteOutDir)
   } catch (err) {
     logError(`Failed to write openspec pages: ${String(err)}`)
-    return
+    return false
   }
 
   logInfo(`Generated docs from ${options.specDir}: ${files.length} file(s)`)
+  return true
 }
