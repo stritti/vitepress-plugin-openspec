@@ -205,4 +205,4 @@ Returns a VitePress sidebar configuration with three groups:
 
 - **Specifications** — one item per capability spec
 - **Changes** — one item per active change, with artifact links
-- **Archiv** — archived changes (collapsed by default)
+- **Archive** — archived changes (collapsed by default)

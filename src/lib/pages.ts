@@ -89,10 +89,10 @@ export function generateChangesIndexPage(folder: OpenSpecFolder, outDir: string)
   }
   if (folder.archivedChanges.length > 0) {
     lines.push('')
-    lines.push('## Archiv')
+    lines.push('## Archive')
     lines.push('')
     for (const change of folder.archivedChanges) {
-      const date = change.archivedDate ? ` *(archiviert: ${change.archivedDate})*` : ''
+      const date = change.archivedDate ? ` *(archived: ${change.archivedDate})*` : ''
       lines.push(
         `- [${change.title ?? humanizeLabel(change.name)}](/${outDir}/changes/archive/${change.archiveFolderName}/)${date}`,
       )
