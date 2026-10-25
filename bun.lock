@@ -20,7 +20,7 @@
         "eslint": "^10.13.0",
         "semantic-release": "^25.0.3",
         "tsup": "^8.5.1",
-        "typescript": "^7.0.2",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
         "typescript-eslint": "^8.72.0",
         "vite": "^8.0.5",
         "vitepress": "^1.6.4",
@@ -34,10 +34,6 @@
         "vitepress",
       ],
     },
-  },
-  "overrides": {
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "npm:typescript-eslint@^8.72.0",
   },
   "packages": {
     "@actions/core": ["@actions/core@3.0.0", "", { "dependencies": { "@actions/exec": "^3.0.0", "@actions/http-client": "^4.0.0" } }, "sha512-zYt6cz+ivnTmiT/ksRVriMBOiuoUpDCJJlZ5KPl2/FRdvwU3f7MPh9qftvbkXJThragzUZieit2nyHUyw53Seg=="],

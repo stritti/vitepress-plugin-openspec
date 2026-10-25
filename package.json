@@ -56,7 +56,7 @@
     "@vitest/coverage-v8": "^5.0.3",
     "semantic-release": "^25.0.3",
     "tsup": "^8.5.1",
-    "typescript": "^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.5",
     "vitepress": "^1.6.4",
     "vitest": "^5.0.3",
@@ -81,9 +81,5 @@
   "engines": {
     "node": ">=18.0.0",
     "bun": ">=1.1.0"
-  },
-  "overrides": {
-    "typescript-eslint": "npm:typescript-eslint@^8.72.0",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }
