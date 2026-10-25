@@ -34,7 +34,7 @@
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly --declaration --declarationMap --outDir dist",
     "dev": "tsup --watch",
-    "lint": "tsc --noEmit",
+    "lint": "eslint . && tsc --noEmit",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -59,7 +59,10 @@
     "typescript": "^7.0.2",
     "vite": "^8.0.5",
     "vitepress": "^1.6.4",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.13.0",
+    "typescript-eslint": "^8.72.0"
   },
   "peerDependencies": {
     "vite": ">=5.0.0",
@@ -78,5 +81,9 @@
   "engines": {
     "node": ">=18.0.0",
     "bun": ">=1.1.0"
+  },
+  "overrides": {
+    "typescript-eslint": "npm:typescript-eslint@^8.72.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }

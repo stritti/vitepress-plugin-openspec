@@ -48,7 +48,7 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  */
 export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
   let resolvedOptions: ResolvedOptions | undefined
-  let ownsSidebarEntry = false
+  const ownsSidebarEntry = false
   let detachListeners: (() => void) | undefined
 
   return {

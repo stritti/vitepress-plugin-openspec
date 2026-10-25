@@ -1,4 +1,3 @@
-import path from 'node:path'
 import type { ViteDevServer } from 'vite'
 import type { ResolvedOptions } from './options.js'
 import { generatePages } from './generator.js'
