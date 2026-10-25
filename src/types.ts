@@ -140,3 +140,26 @@ export interface SidebarItem {
   collapsed?: boolean
   items?: SidebarItem[]
 }
+
+/**
+ * Shape of the VitePress extension that Vite attaches to the resolved
+ * config object (`server.config.vitepress`). VitePress itself attaches its
+ * resolved `SiteConfig` under `vitepress.site`; the flat `themeConfig`
+ * variant only exists in manually built Vite configs (unit tests), so both
+ * locations are supported.
+ */
+export interface VitepressExtension {
+  /** VitePress srcDir, when resolved from a real VitePress context */
+  srcDir?: string
+  /** Resolved VitePress site config (production and dev server) */
+  site?: { themeConfig?: Record<string, unknown> }
+  /** Flat theme config as built by unit tests constructing a Vite config manually */
+  themeConfig?: Record<string, unknown>
+}
+
+/** Extracts the VitePress extension from a Vite `ResolvedConfig`-like object. */
+export function getVitepressExtension(
+  resolvedConfig: unknown,
+): VitepressExtension | undefined {
+  return (resolvedConfig as { vitepress?: VitepressExtension }).vitepress
+}

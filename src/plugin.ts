@@ -10,6 +10,7 @@ import { openspecNav, generateOpenSpecSidebar } from './lib/navigation.js'
 import { isSourceArtifactEvent } from './lib/watch.js'
 import { createScheduler, readNavigationSignature, updateNavigationInMemory } from './lib/dev-server.js'
 import { detectSrcDir, detectVitePressRoot } from './lib/detect.js'
+import { getVitepressExtension } from './types.js'
 
 /**
  * Synchronously generates all VitePress Markdown pages from the openspec/
@@ -56,7 +57,7 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
 
     configResolved(resolvedConfig) {
       detachListeners?.()
-      const vpConfig = (resolvedConfig as unknown as { vitepress?: { srcDir?: string } }).vitepress
+      const vpConfig = getVitepressExtension(resolvedConfig)
       const srcDir =
         userOptions.srcDir ?? vpConfig?.srcDir ?? resolvedConfig.root ?? process.cwd()
       try {

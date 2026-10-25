@@ -5,6 +5,7 @@ import { generatePages } from './generator.js'
 import { readOpenSpecFolder } from './reader.js'
 import { generateOpenSpecSidebar } from './navigation.js'
 import { invalidateGeneratedDestinations } from './watch.js'
+import { getVitepressExtension } from '../types.js'
 
 /**
  * Compact fingerprint of everything that feeds the sidebar and nav:
@@ -44,12 +45,7 @@ export function updateNavigationInMemory(
   ownsSidebarEntry: boolean,
 ): void {
   if (!ownsSidebarEntry) return
-  const vp = (server.config as unknown as {
-    vitepress?: {
-      site?: { themeConfig?: Record<string, unknown> }
-      themeConfig?: Record<string, unknown>
-    }
-  }).vitepress
+  const vp = getVitepressExtension(server.config)
   const themeConfig = vp?.site?.themeConfig ?? vp?.themeConfig
   if (!themeConfig) return
   const sidebarKey = `/${options.outDir}/`
