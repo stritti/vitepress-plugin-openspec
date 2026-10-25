@@ -268,10 +268,10 @@ describe('generateChangesIndexPage', () => {
     expect(page).toContain('/openspec/changes/fix-bug/')
   })
 
-  it('includes Archiv section with archived changes using humanized labels', () => {
+  it('includes Archive section with archived changes using humanized labels', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const page = generateChangesIndexPage(folder, 'openspec')
-    expect(page).toContain('## Archiv')
+    expect(page).toContain('## Archive')
     expect(page).toContain('Old Feature')
   })
 })
@@ -284,16 +284,16 @@ describe('generateOpenSpecSidebar', () => {
     expect(texts).toContain('Changes')
   })
 
-  it('includes Archiv group when archived changes exist', () => {
+  it('includes Archive group when archived changes exist', () => {
     const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
     const texts = sidebar.map((g) => g.text)
-    expect(texts).toContain('Archiv')
+    expect(texts).toContain('Archive')
   })
 
-  it('Archiv group is collapsed by default', () => {
+  it('Archive group is collapsed by default', () => {
     const sidebar = generateOpenSpecSidebar(FIXTURE, { outDir: 'openspec' })
-    const archiv = sidebar.find((g) => g.text === 'Archiv')!
-    expect(archiv.collapsed).toBe(true)
+    const archiveGroup = sidebar.find((g) => g.text === 'Archive')!
+    expect(archiveGroup.collapsed).toBe(true)
   })
 
   it('Specifications group contains spec items', () => {

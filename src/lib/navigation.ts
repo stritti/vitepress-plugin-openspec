@@ -57,7 +57,7 @@ export function generateOpenSpecSidebar(
 
   if (folder.archivedChanges.length > 0) {
     groups.push({
-      text: 'Archiv',
+      text: 'Archive',
       collapsed: true,
       items: folder.archivedChanges.map((c) => ({
         text: c.title ?? humanizeLabel(c.name),
