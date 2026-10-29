@@ -67,3 +67,7 @@
 }
 .VPHero .name { letter-spacing: -0.03em; }
 .VPHero .text { letter-spacing: -0.02em; }
+
+/* Code blocks: replace the purple/red of the default Shiki theme with the brand palette */
+.vp-doc span[style*="--shiki-light:#D73A49"] { --shiki-light: #c2410c !important; --shiki-dark: #ff9a5c !important; }
+.vp-doc span[style*="--shiki-light:#6F42C1"] { --shiki-light: #92400e !important; --shiki-dark: #ffc27a !important; }
