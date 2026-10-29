@@ -1,0 +1,69 @@
+/* Orange brand theme */
+:root {
+  --vp-c-brand-1: #c2410c;
+  --vp-c-brand-2: #d9480f;
+  --vp-c-brand-3: #c2410c;
+  --vp-c-brand-soft: rgba(194, 65, 12, 0.11);
+
+  --vp-button-brand-bg: #c2410c;
+  --vp-button-brand-hover-bg: #d9480f;
+  --vp-button-brand-active-bg: #9a3412;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-text: #ffffff;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #c2410c, #b42318);
+}
+
+.dark {
+  --vp-c-brand-1: #ff9a5c;
+  --vp-c-brand-2: #ffb37f;
+  --vp-c-brand-3: #ff8a4c;
+  --vp-c-brand-soft: rgba(255, 154, 92, 0.16);
+
+  --vp-button-brand-bg: #ff9a5c;
+  --vp-button-brand-hover-bg: #ffb37f;
+  --vp-button-brand-active-bg: #ff8a4c;
+  --vp-button-brand-text: #2a1004;
+  --vp-button-brand-hover-text: #2a1004;
+  --vp-button-brand-active-text: #2a1004;
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #ff9a5c, #ff6b6b);
+}
+
+/* Hero artwork: pipeline from openspec/ to generated pages */
+.hero-art {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.hero-art .ha {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+}
+.ha-glow { fill: var(--vp-c-brand-soft); }
+.ha-box { fill: var(--vp-c-bg-soft); stroke: var(--vp-c-divider); stroke-width: 1.5; }
+.ha-page { fill: var(--vp-c-bg); stroke: var(--vp-c-divider); stroke-width: 1.5; }
+.ha-page-hl { stroke: var(--vp-c-brand-1); }
+.ha-flow { stroke: var(--vp-c-brand-1); stroke-width: 2.4; fill: none; stroke-linecap: round; }
+.ha-head { fill: var(--vp-c-brand-1); }
+.ha-core { fill: var(--vp-c-brand-1); }
+.ha-core-in { fill: var(--vp-button-brand-text); }
+.ha-t { fill: var(--vp-c-text-1); font: 600 12px var(--vp-font-family-base); }
+.ha-t2 { fill: var(--vp-c-text-2); font: 500 10.5px var(--vp-font-family-mono); }
+.ha-tb { fill: var(--vp-c-brand-1); font: 700 11px var(--vp-font-family-base); letter-spacing: 0.06em; }
+.ha-bar-a { fill: var(--vp-c-brand-1); opacity: 0.85; }
+.ha-bar-b { fill: var(--vp-c-divider); }
+
+/* Feature cards */
+.VPFeature .icon { background-color: var(--vp-c-brand-soft); }
+
+/* Hero typography: smaller name so it does not wrap mid-word, text one step below it */
+@media (min-width: 960px) {
+  .VPHero .name { font-size: 44px; line-height: 1.1; }
+  .VPHero .text { font-size: 34px; line-height: 1.2; margin-top: 4px; }
+}
+.VPHero .name { letter-spacing: -0.03em; }
+.VPHero .text { letter-spacing: -0.02em; }
