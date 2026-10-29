@@ -1,3 +1,7 @@
+## Purpose
+
+Render each canonical capability spec as a VitePress page and provide an overview of all specs.
+
 ## Requirements
 
 ### Requirement: A VitePress page is generated for each canonical spec

@@ -1,3 +1,7 @@
+## Purpose
+
+Render each OpenSpec change (active and archived) as VitePress pages with an index and its proposal, design, and tasks artifacts.
+
 ## Requirements
 
 ### Requirement: A VitePress page is generated for each change artifact

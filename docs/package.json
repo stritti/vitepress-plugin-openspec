@@ -9,7 +9,7 @@
     "preview": "vitepress preview"
   },
   "dependencies": {
-    "vitepress-plugin-openspec": "file:../"
+    "@stritti/vitepress-plugin-openspec": "file:../"
   },
   "devDependencies": {
     "vitepress": "^1.6.4"

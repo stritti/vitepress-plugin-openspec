@@ -27,6 +27,9 @@ jobs:
       - name: Type check
         run: bun run lint
 
+      - name: Validate OpenSpec specs
+        run: bunx @fission-ai/openspec validate --specs --strict
+
       - name: Run tests with coverage
         run: bun run test:coverage
 

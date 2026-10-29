@@ -1,3 +1,7 @@
+## Purpose
+
+Give generated spec pages a VitePress `description` for search results and social sharing cards.
+
 ## Requirements
 
 ### Requirement: Generated spec pages include a VitePress description
@@ -23,3 +27,7 @@
 ### Requirement: Generated change index pages do not include auto-description
 
 `generateChangeIndexPage()` SHALL NOT generate a `description` field automatically, as change index pages describe workflow state rather than stable capability behavior.
+
+#### Scenario: Change index page has no description
+- **WHEN** `generateChangeIndexPage()` is called for any change
+- **THEN** the generated page contains no `description` frontmatter field

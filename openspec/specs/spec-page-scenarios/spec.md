@@ -1,3 +1,7 @@
+## Purpose
+
+Present scenarios of generated spec pages as collapsible VitePress detail blocks.
+
 ## Requirements
 
 ### Requirement: Delta section markers are stripped from canonical spec pages

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Let users authenticate with the system using their email address and password.
+
+## Requirements
 
 ### Requirement: User can log in
 The system SHALL allow users to authenticate with email and password.

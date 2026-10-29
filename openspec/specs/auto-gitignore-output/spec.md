@@ -1,3 +1,7 @@
+## Purpose
+
+Keep generated documentation out of version control by writing a self-managed `.gitignore` into the output directory.
+
 ## Requirements
 
 ### Requirement: Plugin writes a self-managed gitignore into the output directory

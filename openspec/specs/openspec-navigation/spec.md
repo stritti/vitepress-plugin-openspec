@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+Provide synchronous sidebar and nav helpers that expose the generated OpenSpec section in VitePress.
+
+## Requirements
 ### Requirement: generateOpenSpecSidebar returns a structured sidebar
 
 `generateOpenSpecSidebar(specDir: string, options?)` SHALL synchronously return a VitePress sidebar configuration with three groups: "Specifications" (all canonical specs), "Changes" (all active changes), and "Archiv" (all archived changes, collapsed).
