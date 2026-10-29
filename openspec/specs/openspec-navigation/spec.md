@@ -5,11 +5,11 @@ Provide synchronous sidebar and nav helpers that expose the generated OpenSpec s
 ## Requirements
 ### Requirement: generateOpenSpecSidebar returns a structured sidebar
 
-`generateOpenSpecSidebar(specDir: string, options?)` SHALL synchronously return a VitePress sidebar configuration with three groups: "Specifications" (all canonical specs), "Changes" (all active changes), and "Archiv" (all archived changes, collapsed).
+`generateOpenSpecSidebar(specDir: string, options?)` SHALL synchronously return a VitePress sidebar configuration with three groups: "Specifications" (all canonical specs), "Changes" (all active changes), and "Archive" (all archived changes, collapsed).
 
 #### Scenario: Full sidebar
 - **WHEN** `generateOpenSpecSidebar('./openspec', { outDir: 'project-docs' })` is called
-- **THEN** the result contains a group `{ text: 'Specifications', items: [...] }`, a group `{ text: 'Changes', items: [...] }`, and a group `{ text: 'Archiv', collapsed: true, items: [...] }`
+- **THEN** the result contains a group `{ text: 'Specifications', items: [...] }`, a group `{ text: 'Changes', items: [...] }`, and a group `{ text: 'Archive', collapsed: true, items: [...] }`
 
 #### Scenario: Empty archive is omitted
 - **WHEN** no archived changes exist

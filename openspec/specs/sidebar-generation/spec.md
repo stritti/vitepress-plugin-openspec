@@ -6,7 +6,7 @@ Define the structure of the sidebar returned by `generateOpenSpecSidebar()` and 
 
 ### Requirement: Sidebar is grouped into specifications, changes, and archive
 
-`generateOpenSpecSidebar()` SHALL return `SidebarItem[]` with a "Specifications" group, a "Changes" group, and an "Archiv" group that is only present when archived changes exist.
+`generateOpenSpecSidebar()` SHALL return `SidebarItem[]` with a "Specifications" group, a "Changes" group, and an "Archive" group that is only present when archived changes exist.
 
 #### Scenario: Specification group lists all specs
 - **WHEN** `generateOpenSpecSidebar(specDir, { outDir: 'openspec' })` is called and a spec `nav-integration` exists
