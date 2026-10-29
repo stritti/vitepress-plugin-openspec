@@ -1,3 +1,7 @@
+## Purpose
+
+Render well-known acronyms such as API, REST, and OAuth in their canonical casing within humanized labels.
+
 ## Requirements
 
 ### Requirement: Acronym dictionary

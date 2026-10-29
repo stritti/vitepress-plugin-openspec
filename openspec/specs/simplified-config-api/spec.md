@@ -1,3 +1,9 @@
+## Purpose
+
+Let consumers wire up the whole OpenSpec integration with a single `withOpenSpec()` call in their VitePress config.
+
+## Requirements
+
 ### Requirement: withOpenSpec wraps a VitePress config
 The system SHALL provide a `withOpenSpec(config, options?)` function that accepts a VitePress `UserConfig` object, calls `generateOpenSpecPages()` synchronously, and returns the config with the openspec Vite plugin, nav entry, and sidebar section merged in.
 

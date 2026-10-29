@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+Read an `openspec/` directory into a structured representation of specs, active changes, and archived changes.
+
+## Requirements
 ### Requirement: Plugin reads the openspec folder and returns a structured representation
 
 The function `readOpenSpecFolder(dir: string): OpenSpecFolder` SHALL scan the given directory and return a structured representation of all canonical specs, active changes, and archived changes.

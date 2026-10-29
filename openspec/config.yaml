@@ -1,20 +1,10 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
-
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+context: |
+  Project: @stritti/vitepress-plugin-openspec, a VitePress plugin that renders an
+  openspec/ folder (specs, active and archived changes) as VitePress pages with
+  sidebar and nav helpers.
+  Tech stack: TypeScript (ESM + CJS via tsup), vitest, Bun/npm, VitePress >= 1, Vite >= 5.
+  Conventions: conventional commits (semantic-release). Specs use `## Purpose` and
+  `## Requirements`; every requirement has at least one `#### Scenario:`.
+  Validate with `openspec validate --specs --strict` (also runs in CI).

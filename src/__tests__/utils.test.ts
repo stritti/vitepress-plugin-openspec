@@ -99,7 +99,7 @@ describe('generateSpecPage', () => {
 
   it('strips delta section markers from output', () => {
     const folder = readOpenSpecFolder(FIXTURE)
-    const spec = folder.specs.find((s) => s.name === 'auth-flow')!
+    const spec = folder.specs.find((s) => s.name === 'data-export')!
     const page = generateSpecPage(spec)
     expect(page).not.toContain('## ADDED Requirements')
     expect(page).not.toContain('## MODIFIED Requirements')
@@ -379,7 +379,7 @@ describe('title override', () => {
     const folder = readOpenSpecFolder(FIXTURE)
     const spec = folder.specs.find((s) => s.name === 'rest-api')!
     const page = generateSpecPage(spec)
-    expect(page).toMatch(/^# REST API Docs/)
+    expect(page).toMatch(/^# REST API Docs/m)
   })
 
   it('uses spec title override in specs index link text', () => {

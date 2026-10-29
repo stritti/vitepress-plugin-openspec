@@ -1,3 +1,7 @@
+## Purpose
+
+Deploy the demo VitePress site to GitHub Pages through a GitHub Actions workflow.
+
 ## Requirements
 
 ### Requirement: Workflow file exists at the expected path

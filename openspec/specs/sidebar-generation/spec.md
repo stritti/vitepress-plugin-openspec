@@ -1,24 +1,20 @@
-### Requirement: generateSidebarFromSpec returns grouped sidebar structure
-`generateSidebarFromSpec()` SHALL return `SidebarItem[]` where each item is a tag group containing child operation items, replacing the previous flat list of operation links.
+## Purpose
 
-#### Scenario: Return value is an array of group objects
-- **WHEN** `generateSidebarFromSpec({ spec: './petstore.yaml', outDir: 'api' })` is called
-- **THEN** the return value is an array where each element has `{ text: string, collapsed: boolean, items: SidebarItem[] }`
+Define the structure of the sidebar returned by `generateOpenSpecSidebar()` and the labels it uses.
 
-#### Scenario: Child items link to individual endpoint pages
-- **WHEN** an endpoint `GET /pets` is tagged `pets`
-- **THEN** the `pets` group's `items` array contains `{ text: 'GET /pets', link: '/api/pets/get-pets' }`
+## Requirements
 
-### Requirement: Index page includes summary table
-`generateIndexMarkdown()` SHALL include a Markdown table with columns `Method`, `Path`, and `Summary` listing all operations, sorted by tag then path.
+### Requirement: Sidebar is grouped into specifications, changes, and archive
 
-#### Scenario: Summary table present in index output
-- **WHEN** `generateIndexMarkdown()` is called for a spec with multiple endpoints
-- **THEN** the output contains a Markdown table with `| Method | Path | Summary |` header row
+`generateOpenSpecSidebar()` SHALL return `SidebarItem[]` with a "Specifications" group, a "Changes" group, and an "Archive" group that is only present when archived changes exist.
 
-#### Scenario: Table rows sorted by tag then path
-- **WHEN** a spec has endpoints across multiple tags
-- **THEN** table rows are grouped by tag (alphabetically) and within each tag sorted by path alphabetically
+#### Scenario: Specification group lists all specs
+- **WHEN** `generateOpenSpecSidebar(specDir, { outDir: 'openspec' })` is called and a spec `nav-integration` exists
+- **THEN** the "Specifications" group contains `{ text: 'Overview', link: '/openspec/specs/' }` followed by an item with `link: '/openspec/specs/nav-integration/'`
+
+#### Scenario: Change items link to artifact pages
+- **WHEN** an active change `my-feature` contains `proposal.md` and `tasks.md`
+- **THEN** its group in "Changes" contains items linking to `/openspec/changes/my-feature/proposal` and `/openspec/changes/my-feature/tasks`
 
 ### Requirement: Sidebar text for spec and change items uses humanized labels
 

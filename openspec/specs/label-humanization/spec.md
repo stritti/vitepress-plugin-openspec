@@ -1,11 +1,24 @@
+## Purpose
+
+Display human-readable labels instead of raw kebab-case names, while allowing an explicit title to override them.
+
 ## Requirements
 
-- MUST convert a kebab-case string to Title Case by splitting on `-`, capitalizing the first letter of each word, and joining with a space
-- MUST handle single-word inputs (no hyphens) by capitalizing the first letter
-- MUST handle empty strings by returning an empty string
-- Result MUST be used as the sole human-visible display label wherever a kebab-case name would otherwise appear
+### Requirement: Kebab-case names are humanized to Title Case
 
-## Title Override
+The system SHALL convert kebab-case names to Title Case labels and use the result wherever a kebab-case name would otherwise be shown.
+
+#### Scenario: Multi-word name
+- **WHEN** `humanizeLabel('readable-sidebar-labels')` is evaluated
+- **THEN** the result is `'Readable Sidebar Labels'`
+
+#### Scenario: Single-word name
+- **WHEN** `humanizeLabel('docs')` is evaluated
+- **THEN** the result is `'Docs'`
+
+#### Scenario: Empty string
+- **WHEN** `humanizeLabel('')` is evaluated
+- **THEN** the result is an empty string
 
 ### Requirement: Title override takes precedence over humanization
 
