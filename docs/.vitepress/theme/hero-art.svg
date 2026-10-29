@@ -1,0 +1,29 @@
+<svg class="ha" viewBox="0 0 480 300" role="img" aria-label="The openspec folder is turned into VitePress pages by the plugin" xmlns="http://www.w3.org/2000/svg">
+  <circle class="ha-glow" cx="240" cy="150" r="118"/>
+  <rect class="ha-box" x="12" y="62" width="128" height="176" rx="12"/>
+  <text class="ha-tb" x="28" y="88">OPENSPEC/</text>
+  <text class="ha-t2" x="28" y="116">specs/</text>
+  <text class="ha-t2" x="40" y="136">auth-flow</text>
+  <text class="ha-t2" x="40" y="154">rest-api</text>
+  <text class="ha-t2" x="28" y="182">changes/</text>
+  <text class="ha-t2" x="40" y="202">add-login</text>
+  <text class="ha-t2" x="40" y="220">archive/</text>
+  <path class="ha-flow" d="M144 150h40"/><path class="ha-head" d="M184 143l12 7-12 7z"/>
+  <path class="ha-flow" d="M296 150h40"/><path class="ha-head" d="M336 143l12 7-12 7z"/>
+  <rect class="ha-core" x="198" y="108" width="84" height="84" rx="18"/>
+  <path class="ha-core-in" d="M222 132h36v6h-36zM222 147h36v6h-36zM222 162h22v6h-22z"/>
+  <text class="ha-t" x="240" y="214" text-anchor="middle">Plugin</text>
+  <rect class="ha-page" x="352" y="52" width="116" height="62" rx="9"/>
+  <rect class="ha-bar-a" x="364" y="64" width="64" height="7" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="80" width="92" height="6" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="92" width="74" height="6" rx="3"/>
+  <rect class="ha-page" x="352" y="122" width="116" height="62" rx="9"/>
+  <rect class="ha-bar-a" x="364" y="134" width="52" height="7" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="150" width="92" height="6" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="162" width="60" height="6" rx="3"/>
+  <rect class="ha-page ha-page-hl" x="352" y="192" width="116" height="62" rx="9"/>
+  <rect class="ha-bar-a" x="364" y="204" width="78" height="7" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="220" width="92" height="6" rx="3"/>
+  <rect class="ha-bar-b" x="364" y="232" width="66" height="6" rx="3"/>
+  <text class="ha-t" x="410" y="276" text-anchor="middle">VitePress</text>
+</svg>
