@@ -166,8 +166,8 @@ The plugin automatically writes a `.gitignore` into the output directory that ex
 
 VitePress scans `srcDir` for `.md` files **before** any Vite plugin hooks run. The plugin solves this with two complementary mechanisms:
 
-1. **`generateOpenSpecPages()`** — called synchronously at the top of `config.ts`, before `defineConfig()`. Ensures all pages exist when VitePress scans for routes (critical for first builds and CI).
-2. **`openspec()` Vite plugin** — calls `generateOpenSpecPages()` again on every config reload during `vitepress dev`, keeping pages in sync with your source files.
+1. **Page generation** — runs synchronously before `defineConfig()` so all pages exist when VitePress scans for routes (critical for first builds and CI). `withOpenSpec` handles this automatically; in manual setup it's the explicit `generateOpenSpecPages()` call.
+2. **`openspec()` Vite plugin** — re-generates pages on every config reload during `vitepress dev`, keeping pages in sync with your source files. `withOpenSpec` adds this plugin automatically.
 
 ---
 
