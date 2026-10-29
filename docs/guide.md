@@ -2,7 +2,7 @@
 
 ## Installation
 
-Install the plugin from npm:
+Install the plugin from [npm](https://www.npmjs.com/package/@stritti/vitepress-plugin-openspec):
 
 ```bash
 npm install @stritti/vitepress-plugin-openspec
