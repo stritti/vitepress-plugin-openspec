@@ -71,3 +71,104 @@
 /* Code blocks: replace the purple/red of the default Shiki theme with the brand palette */
 .vp-doc span[style*="--shiki-light:#D73A49"] { --shiki-light: #c2410c !important; --shiki-dark: #ff9a5c !important; }
 .vp-doc span[style*="--shiki-light:#6F42C1"] { --shiki-light: #92400e !important; --shiki-dark: #ffc27a !important; }
+
+/* Site footer */
+.site-footer {
+  border-top: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-c-bg-soft);
+  padding: 48px 24px 32px;
+}
+.footer-inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  margin: 0 auto;
+  max-width: var(--vp-layout-max-width);
+}
+.footer-brand .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.footer-brand .logo {
+  width: 28px;
+  height: 28px;
+}
+.footer-brand .brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+.footer-brand .tagline {
+  margin: 10px 0 0;
+  max-width: 340px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--vp-c-text-2);
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+}
+.footer-col .col-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-1);
+}
+.footer-col a {
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+  transition: color 0.25s;
+}
+.footer-col a:hover {
+  color: var(--vp-c-brand-1);
+}
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  justify-content: space-between;
+  margin: 36px auto 0;
+  padding-top: 24px;
+  max-width: var(--vp-layout-max-width);
+  border-top: 1px solid var(--vp-c-divider);
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.footer-bottom p {
+  margin: 0;
+}
+.footer-bottom a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.25s;
+}
+.footer-bottom a:hover {
+  color: var(--vp-c-text-1);
+}
+
+@media (min-width: 768px) {
+  .footer-inner {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+/* Keep the footer clear of the fixed sidebar on doc pages, same offset as the content */
+@media (min-width: 960px) {
+  .site-footer.has-sidebar {
+    padding-left: var(--vp-sidebar-width);
+  }
+}
+@media (min-width: 1440px) {
+  .site-footer.has-sidebar {
+    padding-right: calc((100vw - var(--vp-layout-max-width)) / 2);
+    padding-left: calc((100vw - var(--vp-layout-max-width)) / 2 + var(--vp-sidebar-width));
+  }
+}
