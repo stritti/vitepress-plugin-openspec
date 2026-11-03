@@ -1,6 +1,6 @@
 # @stritti/vitepress-plugin-openspec
 
-A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSpec](https://openspec.dev/) folder as structured documentation pages — specs, changes, and artifacts — with sidebar and nav integration.
+A [VitePress](https://vitepress.dev/) plugin that renders your [OpenSpec](https://openspec.dev/) folder as structured documentation pages with automatic sidebar and navigation integration.
 
 [![npm version](https://img.shields.io/npm/v/@stritti/vitepress-plugin-openspec?style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@stritti/vitepress-plugin-openspec)
 [![npm downloads](https://img.shields.io/npm/dm/@stritti/vitepress-plugin-openspec?style=flat-square&color=cb3837&logo=npm)](https://www.npmjs.com/package/@stritti/vitepress-plugin-openspec)
@@ -9,7 +9,20 @@ A [VitePress](https://vitepress.dev/) plugin that renders your project's [OpenSp
 
 ---
 
-## Installation
+## What is OpenSpec?
+
+[OpenSpec](https://openspec.dev/) is a specification format that organizes your project documentation into capabilities and changes. It structures your docs into:
+- **Specs** – Capability specifications in `openspec/specs/<capability>/spec.md`
+- **Changes** – Proposed changes with artifacts in `openspec/changes/<name>/`
+- **Archive** – Completed changes in `openspec/changes/archive/`
+
+This plugin renders your OpenSpec folder as navigable VitePress documentation pages.
+
+---
+
+## Quick Start
+
+### Install
 
 ```bash
 npm install @stritti/vitepress-plugin-openspec
@@ -17,76 +30,82 @@ npm install @stritti/vitepress-plugin-openspec
 bun add @stritti/vitepress-plugin-openspec
 ```
 
----
+### Configure
 
-## Usage
-
-Add the following to your `.vitepress/config.ts`:
+Wrap your VitePress config with `withOpenSpec()`:
 
 ```typescript
+// docs/.vitepress/config.ts
 import { defineConfig } from 'vitepress'
 import { withOpenSpec } from '@stritti/vitepress-plugin-openspec'
 
 export default defineConfig(
   withOpenSpec({
-    // your regular VitePress config
-    themeConfig: {
-      nav: [{ text: 'Home', link: '/' }],
-      sidebar: {},
-    },
+    title: 'My Project',
   })
 )
 ```
 
-`withOpenSpec` handles everything in one call: page generation, the Vite plugin for live reload, the nav entry, and the sidebar section. All fields are optional — it works with an empty config object and sensible defaults.
+That's it! Run `vitepress dev` and your OpenSpec docs appear at `/openspec/`.
 
-**Zero-config by default:** `specDir` and `srcDir` are auto-detected.
+---
 
-- `specDir`: the plugin walks up from the working directory until it finds an `openspec/` folder, so the standard project layout (`openspec/` at the repo root, docs in `docs/.vitepress/config.ts`) needs no path configuration at all.
-- `srcDir`: the plugin detects the directory containing `.vitepress` — either the working directory itself, a first-level subdirectory such as `docs/`, or the parent when the config is evaluated from inside `docs/.vitepress/`.
+## Features
 
-An array-based `sidebar` (single sidebar) is automatically converted to the object form `{ '/': [...] }` so the openspec section can be injected without discarding your existing entries.
+- **Zero-config** – Automatically detects your `openspec/` folder and VitePress source directory
+- **Live reload** – Pages update automatically during `vitepress dev` when you edit OpenSpec files
+- **Sidebar & nav** – Automatic integration into VitePress theme with configurable labels
+- **Index pages** – Generated overviews for specs, changes, and archive with proper hierarchy
+- **Smart defaults** – Works with standard project layouts out of the box
 
-**Other Vite plugins** go into `vite.plugins` as usual — `withOpenSpec` appends to the array without replacing it:
+---
+
+## Configuration
+
+### `withOpenSpec(config, options?)`
+
+Wrap your VitePress config. `withOpenSpec` handles page generation, the Vite plugin for live reload, nav entry, and sidebar section in one call.
 
 ```typescript
 import { defineConfig } from 'vitepress'
 import { withOpenSpec } from '@stritti/vitepress-plugin-openspec'
-import myOtherPlugin from 'vitepress-plugin-something'
 
 export default defineConfig(
   withOpenSpec(
     {
-      vite: { plugins: [myOtherPlugin()] }, // preserved alongside openspec
-      themeConfig: { nav: [], sidebar: {} },
+      // Your regular VitePress config
+      themeConfig: {
+        nav: [{ text: 'Home', link: '/' }],
+        sidebar: {},
+      },
     },
-    { specDir: '../openspec', outDir: 'openspec' } // options (all optional)
+    { specDir: '../openspec', outDir: 'openspec' } // Options (all optional)
   )
 )
 ```
 
----
+**Note:** Array-based sidebars are automatically converted to object form (`{ '/': [...] }`) to inject the OpenSpec section while preserving your existing entries.
 
-## Options
+### Options
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `specDir` | `string` | auto-detected (`<nearest ancestor>/openspec`, fallback `'./openspec'`) | Path to your project's `openspec/` directory. Can be an absolute path or relative to the working directory — use `path.resolve(__dirname, '../../openspec')` when `config.ts` lives in `docs/.vitepress/`. |
+| `specDir` | `string` | auto-detected | Path to your `openspec/` directory. Auto-detects nearest ancestor folder or falls back to `./openspec` |
 | `outDir` | `string` | `'openspec'` | Output directory relative to VitePress `srcDir` |
-| `srcDir` | `string` | auto-detected (directory containing `.vitepress`, fallback working directory) | VitePress source directory (the `docs/` folder) |
-| `nav` | `boolean` | `true` | Whether to prepend an openspec entry to `themeConfig.nav` |
-| `sidebar` | `boolean` | `true` | Whether to inject the openspec sidebar section into `themeConfig.sidebar` |
-| `navText` | `string` | `'Docs'` | Label for the nav entry injected into `themeConfig.nav` |
+| `srcDir` | `string` | auto-detected | VitePress source directory (folder containing `.vitepress/`) |
+| `nav` | `boolean` | `true` | Prepend OpenSpec entry to `themeConfig.nav` |
+| `sidebar` | `boolean` | `true` | Inject OpenSpec sidebar section into `themeConfig.sidebar` |
+| `navText` | `string` | `'Docs'` | Label for the nav entry |
 
-> **Missing directory** — if `specDir` does not exist the plugin emits a `console.warn` and skips page generation, nav, and sidebar. No error is thrown and your VitePress build continues normally. This is intentional for projects that haven't set up an `openspec/` folder yet.
+> **Missing `specDir`:** If the folder doesn't exist, the plugin emits a warning and skips generation. Your build continues normally.
 
-> **Invalid `outDir`** — an `outDir` that is absolute, empty, or resolves outside the VitePress `srcDir` throws an error at config evaluation time. Unlike a missing `specDir`, a misconfigured output path is never silently ignored.
+> **Invalid `outDir`:** An absolute path, empty string, or path resolving outside `srcDir` throws an error at config time.
 
 ---
 
-## Advanced / manual setup
+## Advanced Setup
 
-If you need full control over each integration point, you can wire up the lower-level APIs individually:
+For full control over each integration point, use the lower-level APIs:
 
 ```typescript
 import { defineConfig } from 'vitepress'
@@ -99,23 +118,22 @@ import openspec, {
 } from '@stritti/vitepress-plugin-openspec'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const specDir = path.resolve(__dirname, '../openspec')
 
-// Must be called before defineConfig so pages exist when VitePress scans for routes.
+// Must be called before defineConfig so pages exist when VitePress scans for routes
 generateOpenSpecPages({
-  specDir,
+  specDir: path.resolve(__dirname, '../openspec'),
   outDir: 'openspec',
   srcDir: path.resolve(__dirname, '..'),
 })
 
 export default defineConfig({
   vite: {
-    plugins: [openspec({ specDir, outDir: 'openspec' })],
+    plugins: [openspec({ specDir: path.resolve(__dirname, '../openspec'), outDir: 'openspec' })],
   },
   themeConfig: {
-    nav: [openspecNav(specDir, { outDir: 'openspec', text: 'Docs' })],
+    nav: [openspecNav(path.resolve(__dirname, '../openspec'), { outDir: 'openspec', text: 'Docs' })],
     sidebar: {
-      '/openspec/': generateOpenSpecSidebar(specDir, { outDir: 'openspec' }),
+      '/openspec/': generateOpenSpecSidebar(path.resolve(__dirname, '../openspec'), { outDir: 'openspec' }),
     },
   },
 })
@@ -123,51 +141,22 @@ export default defineConfig({
 
 ---
 
-## Output Structure
+## How It Works
 
-The plugin reads your `openspec/` folder and generates:
+VitePress scans `srcDir` for `.md` files **before** any Vite plugin hooks run. This plugin solves this with two mechanisms:
 
-```
-openspec/                     ← your source (not committed if used as output)
-├── specs/
-│   └── <capability>/
-│       └── spec.md
-└── changes/
-    ├── <change-name>/
-    │   ├── .openspec.yaml
-    │   ├── proposal.md
-    │   ├── design.md
-    │   └── tasks.md
-    └── archive/
-        └── YYYY-MM-DD-<change-name>/
+1. **`generateOpenSpecPages()`** – Called synchronously before `defineConfig()` to ensure pages exist when VitePress scans for routes (critical for first builds and CI)
+2. **`openspec()` Vite plugin** – Re-generates pages on every config reload during `vitepress dev` for live reload support
 
-docs/openspec/                ← generated by the plugin (automatically gitignored)
-├── index.md
-├── specs/
-│   ├── index.md
-│   └── <capability>/
-│       └── index.md
-└── changes/
-    ├── index.md
-    ├── <change-name>/
-    │   ├── index.md
-    │   ├── proposal.md
-    │   └── tasks.md
-    └── archive/
-        └── YYYY-MM-DD-<change-name>/
-            └── ...
-```
-
-The plugin automatically writes a `.gitignore` into the output directory that excludes all generated files from version control. No manual `.gitignore` entry is needed.
+The plugin automatically writes a `.gitignore` in the output directory to exclude generated files.
 
 ---
 
-## How It Works
+## Documentation
 
-VitePress scans `srcDir` for `.md` files **before** any Vite plugin hooks run. The plugin solves this with two complementary mechanisms:
-
-1. **Page generation** — runs synchronously before `defineConfig()` so all pages exist when VitePress scans for routes (critical for first builds and CI). `withOpenSpec` handles this automatically; in manual setup it's the explicit `generateOpenSpecPages()` call.
-2. **`openspec()` Vite plugin** — re-generates pages on every config reload during `vitepress dev`, keeping pages in sync with your source files. `withOpenSpec` adds this plugin automatically.
+- [Full Integration Guide](https://stritti.github.io/vitepress-plugin-openspec/guide) – Complete setup and configuration
+- [API Reference](https://stritti.github.io/vitepress-plugin-openspec/guide#api-reference) – Detailed API documentation
+- [Troubleshooting](https://stritti.github.io/vitepress-plugin-openspec/guide#troubleshooting) – Common issues and solutions
 
 ---
 
