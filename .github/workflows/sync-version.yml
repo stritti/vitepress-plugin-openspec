@@ -1,0 +1,94 @@
+name: Sync Package Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Run in dry-run mode (no changes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Get versions
+        id: versions
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          NPM_VERSION=$(npm view @stritti/vitepress-plugin-openspec version 2>/dev/null || echo "not found")
+          
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "Package version: $PACKAGE_VERSION"
+          echo "NPM version: $NPM_VERSION"
+
+      - name: Check if sync needed
+        id: check
+        run: |
+          if [ "${{ steps.versions.outputs.package_version }}" = "${{ steps.versions.outputs.npm_version }}" ]; then
+            echo "Versions are already in sync."
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.versions.outputs.npm_version }}" = "not found" ]; then
+            echo "Package not published to npm yet."
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version mismatch detected! Sync needed."
+            echo "sync_needed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create sync PR (if needed)
+        if: steps.check.outputs.sync_needed == 'true' && github.event.inputs.dry-run == 'false'
+        run: |
+          # Create a new branch for the sync
+          SYNC_BRANCH="sync/version-${{ steps.versions.outputs.npm_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Update package.json version
+          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '${{ steps.versions.outputs.npm_version }}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');"
+          
+          # Commit changes
+          git add package.json
+          git commit -m "chore: sync package.json version with npm (${{ steps.versions.outputs.npm_version }})"
+          
+          # Push to new branch
+          git push origin HEAD:$SYNC_BRANCH
+          
+          # Create PR
+          PR_URL=$(gh pr create \
+            --repo stritti/vitepress-plugin-openspec \
+            --title "chore: sync package.json version with npm (${{ steps.versions.outputs.npm_version }})" \
+            --body "Automated sync of package.json version with published npm version.\n\nThis ensures consistency between local development and the published package." \
+            --base main \
+            --head $SYNC_BRANCH \
+            --draft)
+          
+          echo "Sync PR created: $PR_URL"
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry-run output
+        if: steps.check.outputs.sync_needed == 'true' && github.event.inputs.dry-run == 'true'
+        run: |
+          echo "Dry-run mode: Would update package.json from ${{ steps.versions.outputs.package_version }} to ${{ steps.versions.outputs.npm_version }}"
+          echo "To apply changes, run this workflow without dry-run mode."
+
+      - name: No sync needed
+        if: steps.check.outputs.sync_needed == 'false'
+        run: echo "No version sync needed. Versions are already consistent."
