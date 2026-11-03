@@ -154,9 +154,9 @@ The plugin automatically writes a `.gitignore` in the output directory to exclud
 
 ## Documentation
 
-- [Full Integration Guide](/guide) – Complete setup and configuration
-- [API Reference](/guide#api-reference) – Detailed API documentation
-- [Troubleshooting](/guide#troubleshooting) – Common issues and solutions
+- [Full Integration Guide](https://stritti.github.io/vitepress-plugin-openspec/guide) – Complete setup and configuration
+- [API Reference](https://stritti.github.io/vitepress-plugin-openspec/guide#api-reference) – Detailed API documentation
+- [Troubleshooting](https://stritti.github.io/vitepress-plugin-openspec/guide#troubleshooting) – Common issues and solutions
 
 ---
 
