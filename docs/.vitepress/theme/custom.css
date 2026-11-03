@@ -68,6 +68,29 @@
 .VPHero .name { letter-spacing: -0.03em; }
 .VPHero .text { letter-spacing: -0.02em; }
 
+/* shields.io badges: one wrapping row directly under the hero action buttons,
+   aligned like the hero text (centered on mobile, left next to the image on desktop) */
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+.hero-badges a {
+  display: inline-block;
+  line-height: 0;
+}
+.hero-badges img {
+  display: block;
+  height: 20px;
+}
+@media (min-width: 960px) {
+  .VPHero.has-image .hero-badges {
+    justify-content: flex-start;
+  }
+}
+
 /* Code blocks: replace the purple/red of the default Shiki theme with the brand palette */
 .vp-doc span[style*="--shiki-light:#D73A49"] { --shiki-light: #c2410c !important; --shiki-dark: #ff9a5c !important; }
 .vp-doc span[style*="--shiki-light:#6F42C1"] { --shiki-light: #92400e !important; --shiki-dark: #ffc27a !important; }
