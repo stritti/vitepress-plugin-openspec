@@ -8,6 +8,10 @@ on:
         required: false
         default: 'false'
         type: boolean
+      target-commit:
+        description: 'Specific commit to tag (optional, defaults to HEAD)'
+        required: false
+        type: string
 
 jobs:
   sync-version:
@@ -44,27 +48,33 @@ jobs:
           echo "Latest Git tag: $LATEST_TAG"
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
-      - name: Check if sync needed
-        id: check
+      - name: Check package.json sync needed
+        id: package-check
         run: |
           if [ "${{ steps.versions.outputs.package_version }}" = "${{ steps.versions.outputs.npm_version }}" ]; then
-            echo "Versions are already in sync."
-            echo "sync_needed=false" >> $GITHUB_OUTPUT
+            echo "Package versions are in sync."
+            echo "package_sync_needed=false" >> $GITHUB_OUTPUT
           elif [ "${{ steps.versions.outputs.npm_version }}" = "not found" ]; then
             echo "Package not published to npm yet."
-            echo "sync_needed=false" >> $GITHUB_OUTPUT
+            echo "package_sync_needed=false" >> $GITHUB_OUTPUT
           else
-            echo "Version mismatch detected! Sync needed."
-            echo "sync_needed=true" >> $GITHUB_OUTPUT
+            echo "Package version mismatch detected!"
+            echo "package_sync_needed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check if tag reconciliation needed
+      - name: Check tag reconciliation needed
         id: tag-check
-        if: steps.check.outputs.sync_needed == 'true'
         run: |
           # Check if the npm version has a corresponding Git tag
           NPM_VERSION="${{ steps.versions.outputs.npm_version }}"
           LATEST_TAG="${{ steps.git-tag.outputs.latest_tag }}"
+          
+          # If no npm version, no tag reconciliation needed
+          if [ "$NPM_VERSION" = "not found" ]; then
+            echo "No npm version, skipping tag check."
+            echo "tag_reconciliation_needed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Extract version from tag (remove 'v' prefix if present)
           TAG_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
@@ -72,38 +82,78 @@ jobs:
           if [ "$TAG_VERSION" != "$NPM_VERSION" ]; then
             echo "Tag reconciliation needed: Git tag ($LATEST_TAG) != npm version ($NPM_VERSION)"
             echo "tag_reconciliation_needed=true" >> $GITHUB_OUTPUT
+            echo "missing_tag=v$NPM_VERSION" >> $GITHUB_OUTPUT
           else
             echo "Git tag is already in sync with npm version."
             echo "tag_reconciliation_needed=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Determine target commit for tag
+        id: target-commit
+        if: steps.tag-check.outputs.tag_reconciliation_needed == 'true'
+        run: |
+          # Use the input target-commit if provided, otherwise use HEAD
+          TARGET_COMMIT="${{ github.event.inputs.target-commit }}"
+          
+          if [ -n "$TARGET_COMMIT" ]; then
+            # Verify the commit exists
+            if git rev-parse "$TARGET_COMMIT" >/dev/null 2>&1; then
+              echo "Using specified target commit: $TARGET_COMMIT"
+              echo "target_commit=$TARGET_COMMIT" >> $GITHUB_OUTPUT
+            else
+              echo "::error::Specified target commit $TARGET_COMMIT does not exist!"
+              exit 1
+            fi
+          else
+            # Try to find the commit that was actually published
+            # This is tricky - we don't have a direct mapping from npm version to commit
+            # For now, we'll use HEAD but add a warning
+            echo "::warning::No target commit specified. Will tag HEAD, but this may not be the commit that was published to npm."
+            echo "::warning::To tag the correct commit, specify the target-commit input when running this workflow."
+            echo "target_commit=HEAD" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create sync PR with tag reconciliation (if needed)
-        if: steps.check.outputs.sync_needed == 'true' && steps.tag-check.outputs.tag_reconciliation_needed == 'true' && github.event.inputs.dry-run == 'false'
+        if: steps.tag-check.outputs.tag_reconciliation_needed == 'true' && github.event.inputs.dry-run == 'false'
         run: |
           # Create a new branch for the sync
           SYNC_BRANCH="sync/version-${{ steps.versions.outputs.npm_version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Update package.json version
-          node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '${{ steps.versions.outputs.npm_version }}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');"
+          # Update package.json version if needed
+          if [ "${{ steps.package-check.outputs.package_sync_needed }}" = "true" ]; then
+            node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '${{ steps.versions.outputs.npm_version }}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');"
+            git add package.json
+          fi
           
-          # Create Git tag for the npm version
-          git tag "v${{ steps.versions.outputs.npm_version }}" -m "Release v${{ steps.versions.outputs.npm_version }}"
+          # Create Git tag for the npm version at the target commit
+          TARGET="${{ steps.target-commit.outputs.target_commit }}"
+          git tag "v${{ steps.versions.outputs.npm_version }}" "$TARGET" -m "Release v${{ steps.versions.outputs.npm_version }}"
           
-          # Commit changes
-          git add package.json
-          git commit -m "chore: sync package.json version with npm (${{ steps.versions.outputs.npm_version }})"
+          # Commit changes (only if package.json was updated)
+          if [ "${{ steps.package-check.outputs.package_sync_needed }}" = "true" ]; then
+            git commit -m "chore: sync package.json version with npm (${{ steps.versions.outputs.npm_version }})"
+          fi
           
           # Push to new branch and tags
           git push origin HEAD:$SYNC_BRANCH
           git push origin "v${{ steps.versions.outputs.npm_version }}"
           
           # Create PR
+          PR_BODY="Automated sync of package.json version and Git tag with published npm version.\n\n"
+          PR_BODY+="This ensures consistency between local development, Git tags, and the published package.\n\n"
+          
+          if [ "${{ steps.target-commit.outputs.target_commit }}" = "HEAD" ]; then
+            PR_BODY+="**⚠️ WARNING:** This PR tags the current HEAD commit. If this is not the commit that was actually published to npm, please specify the correct commit using the target-commit input when running this workflow.\n\n"
+          fi
+          
+          PR_BODY+="**Important:** This PR includes a Git tag (v${{ steps.versions.outputs.npm_version }}) to reconcile with the manually published npm version. This is required because semantic-release bases the next version on Git tags, not package.json."
+          
           PR_URL=$(gh pr create \
             --repo stritti/vitepress-plugin-openspec \
             --title "chore: sync package.json version with npm (${{ steps.versions.outputs.npm_version }})" \
-            --body "Automated sync of package.json version and Git tag with published npm version.\n\nThis ensures consistency between local development, Git tags, and the published package.\n\n**Important:** This PR includes a Git tag (v${{ steps.versions.outputs.npm_version }}) to reconcile with the manually published npm version. This is required because semantic-release bases the next version on Git tags, not package.json." \
+            --body "$PR_BODY" \
             --base main \
             --head $SYNC_BRANCH \
             --draft)
@@ -113,8 +163,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create sync PR without tag (if tag already exists)
-        if: steps.check.outputs.sync_needed == 'true' && steps.tag-check.outputs.tag_reconciliation_needed == 'false' && github.event.inputs.dry-run == 'false'
+      - name: Create sync PR without tag (if only package.json needs sync)
+        if: steps.package-check.outputs.package_sync_needed == 'true' && steps.tag-check.outputs.tag_reconciliation_needed == 'false' && github.event.inputs.dry-run == 'false'
         run: |
           # Create a new branch for the sync
           SYNC_BRANCH="sync/version-${{ steps.versions.outputs.npm_version }}"
@@ -145,15 +195,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Dry-run output
-        if: steps.check.outputs.sync_needed == 'true' && github.event.inputs.dry-run == 'true'
+      - name: Tag only (if package.json is already synced but tag is missing)
+        if: steps.package-check.outputs.package_sync_needed == 'false' && steps.tag-check.outputs.tag_reconciliation_needed == 'true' && github.event.inputs.dry-run == 'false'
         run: |
-          echo "Dry-run mode: Would update package.json from ${{ steps.versions.outputs.package_version }} to ${{ steps.versions.outputs.npm_version }}"
-          if [ "${{ steps.tag-check.outputs.tag_reconciliation_needed }}" = "true" ]; then
-            echo "Would also create Git tag v${{ steps.versions.outputs.npm_version }} to reconcile with semantic-release"
+          # This is the case where package.json is already correct but tag is missing
+          TARGET="${{ steps.target-commit.outputs.target_commit }}"
+          
+          # Create Git tag for the npm version at the target commit
+          git tag "v${{ steps.versions.outputs.npm_version }}" "$TARGET" -m "Release v${{ steps.versions.outputs.npm_version }}"
+          
+          # Push tag
+          git push origin "v${{ steps.versions.outputs.npm_version }}"
+          
+          echo "Git tag v${{ steps.versions.outputs.npm_version }} created and pushed to $TARGET"
+          echo "No PR created - only tag was updated."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dry-run output
+        if: github.event.inputs.dry-run == 'true'
+        run: |
+          echo "=== DRY-RUN MODE ==="
+          echo "Package sync needed: ${{ steps.package-check.outputs.package_sync_needed }}"
+          echo "Tag reconciliation needed: ${{ steps.tag-check.outputs.tag_reconciliation_needed }}"
+          
+          if [ "${{ steps.package-check.outputs.package_sync_needed }}" = "true" ]; then
+            echo "Would update package.json from ${{ steps.versions.outputs.package_version }} to ${{ steps.versions.outputs.npm_version }}"
           fi
+          
+          if [ "${{ steps.tag-check.outputs.tag_reconciliation_needed }}" = "true" ]; then
+            echo "Would create Git tag v${{ steps.versions.outputs.npm_version }} at ${{ steps.target-commit.outputs.target_commit }}"
+          fi
+          
+          echo ""
           echo "To apply changes, run this workflow without dry-run mode."
 
       - name: No sync needed
-        if: steps.check.outputs.sync_needed == 'false'
-        run: echo "No version sync needed. Versions are already consistent."
+        if: steps.package-check.outputs.package_sync_needed == 'false' && steps.tag-check.outputs.tag_reconciliation_needed == 'false'
+        run: echo "No version sync or tag reconciliation needed. Everything is consistent."
