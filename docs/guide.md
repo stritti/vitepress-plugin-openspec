@@ -549,6 +549,6 @@ The plugin automatically writes a `.gitignore` in the output directory, but you 
 
 ## See Also
 
-- [API Reference](/api) – Detailed type definitions and function signatures
+- [API Reference](#api-reference) – Detailed type definitions and function signatures
 - [OpenSpec Documentation](https://openspec.dev/) – Learn about OpenSpec format
 - [VitePress Documentation](https://vitepress.dev/) – Learn about VitePress configuration
