@@ -1,3 +1,10 @@
+## [0.8.8](https://github.com/stritti/vitepress-plugin-openspec/compare/v0.8.7...v0.8.8) (2026-11-04)
+
+
+### Bug Fixes
+
+* replace version in menu with generic text 'Releases' ([c027a30](https://github.com/stritti/vitepress-plugin-openspec/commit/c027a308791c91806291043457700e482f2c2005))
+
 ## [0.8.7](https://github.com/stritti/vitepress-plugin-openspec/compare/v0.8.6...v0.8.7) (2026-11-04)
 
 
