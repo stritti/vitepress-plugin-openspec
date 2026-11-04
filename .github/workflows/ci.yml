@@ -35,3 +35,40 @@ jobs:
 
       - name: Build package
         run: bun run build
+
+  version-consistency-check:
+    name: Version Consistency Check
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check version consistency
+        run: |
+          # Get current version from package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "Local package version: $PACKAGE_VERSION"
+          
+          # Get published version from npm
+          NPM_VERSION=$(npm view @stritti/vitepress-plugin-openspec version 2>/dev/null || echo "not published")
+          echo "Published npm version: $NPM_VERSION"
+          
+          # Warn if versions differ (indicates manual publish without semantic-release)
+          if [ "$PACKAGE_VERSION" != "$NPM_VERSION" ] && [ "$NPM_VERSION" != "not published" ]; then
+            echo "::warning::Version mismatch detected!"
+            echo "::warning::package.json: $PACKAGE_VERSION"
+            echo "::warning::npm: $NPM_VERSION"
+            echo "::warning::This may indicate a manual npm publish without using semantic-release."
+            echo "::warning::Please ensure all releases go through semantic-release to maintain consistency."
+            exit 0 # Don't fail the build, just warn
+          fi
+          
+          echo "Version consistency check passed."
