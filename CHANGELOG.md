@@ -1,3 +1,10 @@
+## [0.8.7](https://github.com/stritti/vitepress-plugin-openspec/compare/v0.8.6...v0.8.7) (2026-11-04)
+
+
+### Bug Fixes
+
+* replace dead link /api with anchor #api-reference ([f404a63](https://github.com/stritti/vitepress-plugin-openspec/commit/f404a6348237ae596233930bfa8de7d25263ee6f)), closes [#api-reference](https://github.com/stritti/vitepress-plugin-openspec/issues/api-reference) [#api-reference](https://github.com/stritti/vitepress-plugin-openspec/issues/api-reference)
+
 ## [0.8.6](https://github.com/stritti/vitepress-plugin-openspec/compare/v0.8.5...v0.8.6) (2026-11-04)
 
 
