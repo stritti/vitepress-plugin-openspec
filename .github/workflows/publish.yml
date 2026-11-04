@@ -44,15 +44,49 @@ jobs:
           NPM_VERSION=$(npm view @stritti/vitepress-plugin-openspec version 2>/dev/null || echo "not found")
           echo "NPM version: $NPM_VERSION"
           
-          # If versions differ, this is a manual publish that needs sync
-          if [ "$PACKAGE_VERSION" != "$NPM_VERSION" ] && [ "$NPM_VERSION" != "not found" ]; then
-            echo "::error::Version mismatch detected! package.json ($PACKAGE_VERSION) != npm ($NPM_VERSION)"
-            echo "::error::This suggests a manual npm publish without semantic-release. Sync required."
-            echo "sync_required=true" >> $GITHUB_OUTPUT
-            exit 1
+          # If no npm version, this is the first publish - proceed normally
+          if [ "$NPM_VERSION" = "not found" ]; then
+            echo "First publish, no version check needed."
+            echo "sync_required=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
           
-          echo "sync_required=false" >> $GITHUB_OUTPUT
+          # If npm version is HIGHER than package.json, this indicates a manual publish
+          # This is the only case we should block
+          if [ "$NPM_VERSION" != "$PACKAGE_VERSION" ]; then
+            # Compare versions using node to handle semantic versioning correctly
+            COMPARISON=$(node -e "
+              const { compare } = require('semver');
+              const npmVersion = '$NPM_VERSION';
+              const pkgVersion = '$PACKAGE_VERSION';
+              const result = compare(npmVersion, pkgVersion);
+              if (result > 0) {
+                console.log('npm_higher');
+              } else if (result < 0) {
+                console.log('npm_lower');
+              } else {
+                console.log('equal');
+              }
+            ")
+            
+            if [ "$COMPARISON" = "npm_higher" ]; then
+              # npm version is higher - this is a manual publish that needs sync
+              echo "::error::Version mismatch detected! npm ($NPM_VERSION) > package.json ($PACKAGE_VERSION)"
+              echo "::error::This suggests a manual npm publish without semantic-release. Use the sync-version workflow to reconcile."
+              echo "sync_required=true" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ "$COMPARISON" = "npm_lower" ]; then
+              # npm version is lower - this is likely a race condition with another release
+              echo "::warning::Version mismatch detected! npm ($NPM_VERSION) < package.json ($PACKAGE_VERSION)"
+              echo "::warning::This may indicate a concurrent release. Proceeding with release..."
+              echo "sync_required=false" >> $GITHUB_OUTPUT
+            else
+              # Versions are equal
+              echo "sync_required=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "sync_required=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Release
         if: steps.version-check.outputs.sync_required != 'true'
