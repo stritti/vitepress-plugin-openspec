@@ -9,7 +9,41 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    groups:
+      runtime-dependencies:
+        patterns:
+          - "js-yaml"
+          - "picocolors"
+      vite-ecosystem:
+        patterns:
+          - "vite"
+          - "vitepress"
+      build-tools:
+        patterns:
+          - "tsup"
+          - "typescript"
+      linting:
+        patterns:
+          - "eslint"
+          - "@eslint/js"
+          - "typescript-eslint"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/coverage-v8"
+      types:
+        patterns:
+          - "@types/*"
+      semantic-release:
+        patterns:
+          - "semantic-release"
+          - "@semantic-release/*"
   - package-ecosystem: "bun" # See documentation for possible values
     directory: "/docs" # Location of package manifests
     schedule:
       interval: "weekly"
+    groups:
+      vite-ecosystem:
+        patterns:
+          - "vite"
+          - "vitepress"
