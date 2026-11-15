@@ -26,7 +26,6 @@ export function rewriteRelativeLinks(
         !rawUrl ||
         rawUrl.startsWith('http://') ||
         rawUrl.startsWith('https://') ||
-        rawUrl.startsWith('//') ||
         rawUrl.startsWith('/') ||
         rawUrl.startsWith('#') ||
         rawUrl.startsWith('mailto:') ||

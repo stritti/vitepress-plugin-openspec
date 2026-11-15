@@ -2,9 +2,7 @@ import type { ViteDevServer } from 'vite'
 import type { ResolvedOptions } from './options.js'
 import { generatePages } from './generator.js'
 import { readOpenSpecFolder } from './reader.js'
-import { generateOpenSpecSidebar } from './navigation.js'
 import { invalidateGeneratedDestinations } from './watch.js'
-import { getVitepressExtension } from '../types.js'
 
 /**
  * Compact fingerprint of everything that feeds the sidebar and nav:
@@ -22,40 +20,6 @@ export function readNavigationSignature(options: ResolvedOptions): string {
     })
   } catch {
     return 'unreadable'
-  }
-}
-
-/**
- * Updates the sidebar and nav entries inside the in-memory VitePress
- * theme config that `withOpenSpec()` created. `server.restart(true)` only
- * re-creates Vite from the already-resolved inline configuration, so it
- * never re-runs `withOpenSpec()`; mutating the live themeConfig object
- * before the restart is what actually refreshes the navigation.
- *
- * The live theme config lives on the VitePress `SiteConfig` object exposed
- * as `server.config.vitepress.site.themeConfig` (VitePress resolves its
- * site config before creating Vite). The flat `server.config.vitepress`
- * object only exists in unit tests that build a Vite config manually, so
- * both locations are supported.
- */
-export function updateNavigationInMemory(
-  options: ResolvedOptions,
-  server: ViteDevServer,
-  ownsSidebarEntry: boolean,
-): void {
-  if (!ownsSidebarEntry) return
-  const vp = getVitepressExtension(server.config)
-  const themeConfig = vp?.site?.themeConfig ?? vp?.themeConfig
-  if (!themeConfig) return
-  const sidebarKey = `/${options.outDir}/`
-  const items = generateOpenSpecSidebar(options.specDir, { outDir: options.outDir })
-  const sidebar = (themeConfig.sidebar ?? {}) as Record<string, unknown>
-  if (items.length > 0) {
-    sidebar[sidebarKey] = items
-    themeConfig.sidebar = sidebar
-  } else {
-    delete sidebar[sidebarKey]
-    themeConfig.sidebar = sidebar
   }
 }
 

@@ -8,7 +8,7 @@ import { resolveOptions } from './lib/options.js'
 import { generatePages } from './lib/generator.js'
 import { openspecNav, generateOpenSpecSidebar } from './lib/navigation.js'
 import { isSourceArtifactEvent } from './lib/watch.js'
-import { createScheduler, readNavigationSignature, updateNavigationInMemory } from './lib/dev-server.js'
+import { createScheduler, readNavigationSignature } from './lib/dev-server.js'
 import { detectSrcDir, detectVitePressRoot } from './lib/detect.js'
 import { getVitepressExtension } from './types.js'
 
@@ -48,7 +48,6 @@ export function generateOpenSpecPages(userOptions: OpenSpecPluginOptions = {}): 
  */
 export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
   let resolvedOptions: ResolvedOptions | undefined
-  const ownsSidebarEntry = false
   let detachListeners: (() => void) | undefined
 
   return {
@@ -66,17 +65,11 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
         logWarn(String(err))
         return
       }
-      if (!fs.existsSync(resolvedOptions.specDir)) {
-        logWarn(
-          `openspec directory not found: ${resolvedOptions.specDir} — skipping page generation`,
-        )
-        // Still run generatePages so previously generated pages recorded in
-        // the manifest are cleaned up when the source directory disappears.
-        generatePages(resolvedOptions)
-        resolvedOptions = undefined
-        return
-      }
+      // generatePages warns when the source is missing and still cleans up
+      // previously generated pages recorded in the manifest.
+      const specDirExists = fs.existsSync(resolvedOptions.specDir)
       generatePages(resolvedOptions)
+      if (!specDirExists) resolvedOptions = undefined
     },
 
     configureServer(server) {
@@ -101,7 +94,6 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
         const affectsNavigation = event !== 'change' || signature !== navigationSignature
         if (affectsNavigation) {
           scheduler.cancel()
-          updateNavigationInMemory(options, server, ownsSidebarEntry)
           navigationSignature = signature
           server.restart(true)
         } else {
@@ -131,8 +123,8 @@ export function openspec(userOptions: OpenSpecPluginOptions = {}): Plugin {
     },
 
     closeBundle() {
+      // The detach closure also clears `detachListeners` itself.
       detachListeners?.()
-      detachListeners = undefined
     },
   }
 }
