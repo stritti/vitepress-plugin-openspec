@@ -1,12 +1,23 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { NavItem, SidebarItem } from '../types.js'
+import type { Change, NavItem, SidebarItem } from '../types.js'
 import { logWarn } from './logger.js'
 import { humanizeLabel, readOpenSpecFolder } from './reader.js'
 import { specTitle } from './markdown.js'
 
-function changeItems(change: { name: string; archiveFolderName?: string; artifacts: string[] }, outDir: string, isArchived = false): SidebarItem[] {
-  const prefix = isArchived
+function resolveExistingSpecDir(specDir: string, context: string): string | undefined {
+  const resolved = path.resolve(specDir)
+  if (!fs.existsSync(resolved)) {
+    logWarn(
+      `openspec directory not found: ${path.relative(process.cwd(), resolved)} — skipping ${context}`,
+    )
+    return undefined
+  }
+  return resolved
+}
+
+function changeItems(change: Change, outDir: string): SidebarItem[] {
+  const prefix = change.archiveFolderName
     ? `/${outDir}/changes/archive/${change.archiveFolderName}`
     : `/${outDir}/changes/${change.name}`
   return change.artifacts.map((a) => ({
@@ -24,13 +35,9 @@ export function generateOpenSpecSidebar(
   options: { outDir?: string } = {},
 ): SidebarItem[] {
   const outDir = options.outDir ?? 'openspec'
-  if (!fs.existsSync(path.resolve(specDir))) {
-    logWarn(
-      `openspec directory not found: ${path.relative(process.cwd(), path.resolve(specDir))} — skipping sidebar generation`,
-    )
-    return []
-  }
-  const folder = readOpenSpecFolder(specDir)
+  const resolved = resolveExistingSpecDir(specDir, 'sidebar generation')
+  if (!resolved) return []
+  const folder = readOpenSpecFolder(resolved)
   const groups: SidebarItem[] = []
 
   groups.push({
@@ -62,7 +69,7 @@ export function generateOpenSpecSidebar(
       items: folder.archivedChanges.map((c) => ({
         text: c.title ?? humanizeLabel(c.name),
         collapsed: true,
-        items: changeItems(c, outDir, true),
+        items: changeItems(c, outDir),
       })),
     })
   }
@@ -78,12 +85,7 @@ export function openspecNav(
   options: { outDir?: string; text?: string } = {},
 ): NavItem | null {
   const outDir = options.outDir ?? 'openspec'
-  if (!fs.existsSync(path.resolve(specDir))) {
-    logWarn(
-      `openspec directory not found: ${path.relative(process.cwd(), path.resolve(specDir))} — skipping nav generation`,
-    )
-    return null
-  }
+  if (!resolveExistingSpecDir(specDir, 'nav generation')) return null
   return {
     text: options.text ?? 'Docs',
     link: `/${outDir}/`,

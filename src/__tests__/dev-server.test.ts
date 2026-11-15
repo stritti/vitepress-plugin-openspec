@@ -5,11 +5,7 @@ import os from 'node:os'
 import type { Plugin } from 'vite'
 import { openspec } from '../plugin.js'
 import { resolveOptions } from '../lib/options.js'
-import {
-  createScheduler,
-  readNavigationSignature,
-  updateNavigationInMemory,
-} from '../lib/dev-server.js'
+import { createScheduler, readNavigationSignature } from '../lib/dev-server.js'
 
 interface WatcherLike {
   add: (p: string) => void
@@ -176,64 +172,6 @@ describe('readNavigationSignature', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-sig-'))
     const options = resolveOptions({ specDir: path.join(tmpDir, 'openspec'), srcDir: tmpDir, outDir: 'openspec' })
     expect(readNavigationSignature(options)).toBe('unreadable')
-  })
-})
-
-describe('updateNavigationInMemory', () => {
-  let tmpDir: string
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }))
-
-  function setup() {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-nav-'))
-    const specDir = path.join(tmpDir, 'openspec')
-    fs.mkdirSync(path.join(specDir, 'specs', 'auth'), { recursive: true })
-    fs.writeFileSync(path.join(specDir, 'specs', 'auth', 'spec.md'), '# Auth\n')
-    const options = resolveOptions({ specDir, srcDir: tmpDir, outDir: 'openspec' })
-    const themeConfig: Record<string, unknown> = { sidebar: {} }
-    const server = {
-      config: { vitepress: { site: { themeConfig } } },
-      ws: { send: vi.fn() },
-      restart: vi.fn(),
-      watcher: { add: vi.fn(), on: vi.fn(), off: vi.fn() },
-      httpServer: { once: vi.fn(), removeListener: vi.fn() },
-    }
-    return { options, themeConfig, server }
-  }
-
-  it('injects the generated sidebar under its route key', () => {
-    const { options, themeConfig, server } = setup()
-    updateNavigationInMemory(options, server as never, true)
-    const sidebar = themeConfig.sidebar as Record<string, unknown[]>
-    expect(Array.isArray(sidebar['/openspec/'])).toBe(true)
-  })
-
-  it('uses the legacy vitepress.themeConfig location as fallback', () => {
-    const { options, server } = setup()
-    const legacyThemeConfig: Record<string, unknown> = {}
-    ;(server.config as { vitepress: unknown }).vitepress = { themeConfig: legacyThemeConfig }
-    updateNavigationInMemory(options, server as never, true)
-    expect(legacyThemeConfig.sidebar).toBeDefined()
-  })
-
-  it('does nothing when the plugin does not own the sidebar entry', () => {
-    const { options, themeConfig, server } = setup()
-    updateNavigationInMemory(options, server as never, false)
-    expect(themeConfig.sidebar).toEqual({})
-  })
-
-  it('removes the sidebar entry when nothing is generated', () => {
-    const { options, themeConfig, server } = setup()
-    const sidebar = themeConfig.sidebar as Record<string, unknown>
-    sidebar['/openspec/'] = [{ text: 'stale', link: '/x' }]
-    fs.rmSync(options.specDir, { recursive: true, force: true })
-    updateNavigationInMemory(options, server as never, true)
-    expect(sidebar['/openspec/']).toBeUndefined()
-  })
-
-  it('does nothing when no themeConfig is present', () => {
-    const { options, server } = setup()
-    ;(server.config as { vitepress: unknown }).vitepress = {}
-    expect(() => updateNavigationInMemory(options, server as never, true)).not.toThrow()
   })
 })
 

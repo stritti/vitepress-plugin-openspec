@@ -69,8 +69,8 @@ function readArtifacts(dir: string): ChangeArtifact[] {
   return ARTIFACT_NAMES.filter((name) => fs.existsSync(path.join(dir, `${name}.md`)))
 }
 
-function isDirectory(dir: string, name: string): boolean {
-  return fs.existsSync(path.join(dir, name, '.openspec.yaml'))
+function hasChangeMeta(changeDir: string): boolean {
+  return fs.existsSync(path.join(changeDir, '.openspec.yaml'))
 }
 
 /**
@@ -110,7 +110,7 @@ export function readOpenSpecFolder(dir: string): OpenSpecFolder {
     for (const entry of fs.readdirSync(changesDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name === 'archive') continue
       const changeDir = path.join(changesDir, entry.name)
-      if (!isDirectory(changeDir, '.')) continue
+      if (!hasChangeMeta(changeDir)) continue
       const meta = readOpenSpecYaml(changeDir)
       changes.push({
         name: entry.name,

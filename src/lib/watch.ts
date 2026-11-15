@@ -80,11 +80,11 @@ export function isPluginGeneratedFile(options: ResolvedOptions, absFile: string)
     case 'equal':
       return ALWAYS_GENERATED_BASENAMES.has(base)
     case 'out-inside-spec':
-      // The output tree is nested inside specDir, so a basename match can
-      // hit real source files too. Only the exact destinations recorded
-      // in the manifest (checked above) plus the always-generated
-      // top-level markers count as plugin output.
-      return ALWAYS_GENERATED_BASENAMES.has(base) && !isInside(options.specDir, absFile)
+      // The output tree is nested inside specDir, so every file in it is
+      // also inside specDir and could be a real source file. Only the exact
+      // destinations recorded in the manifest (checked above) count as
+      // plugin output.
+      return false
     case 'disjoint':
       return ALWAYS_GENERATED_BASENAMES.has(base) || ARTIFACT_BASENAMES.has(base)
     case 'spec-inside-out':

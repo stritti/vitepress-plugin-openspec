@@ -57,16 +57,7 @@ function pruneEmptyDirs(rootDir: string, startDir: string): void {
  * manifest so cleanup retries instead of forgetting them.
  */
 function cleanupPreviousManifest(rootDir: string): string[] {
-  const manifestPath = path.join(rootDir, MANIFEST_FILE)
-  if (!fs.existsSync(manifestPath)) return []
-  let previous: string[] = []
-  try {
-    const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as unknown
-    if (Array.isArray(parsed)) previous = parsed.filter((f): f is string => typeof f === 'string')
-  } catch {
-    // Unreadable manifest: treat as empty
-    return []
-  }
+  const previous = readManifest(rootDir)
   const retained: string[] = []
   for (const entry of previous) {
     const entryPath = path.resolve(rootDir, entry)
